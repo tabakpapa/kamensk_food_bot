@@ -377,6 +377,7 @@ NIGHT_PLACES = [
     "Генрих и Генриетта",
     "Седьмое небо",
 ]
+
 def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
@@ -388,14 +389,11 @@ def get_main_keyboard():
         ],
         resize_keyboard=True
     )
-def get_main_keyboard():
+
+def get_back_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🍔 Бургеры"), KeyboardButton(text="🌯 Шаурма")],
-            [KeyboardButton(text="🍕 Пицца"), KeyboardButton(text="☕ Кофе")],
-            [KeyboardButton(text="🍺 Бары"), KeyboardButton(text="⭐ Лучшие места")],
-            [KeyboardButton(text="🌙 Где поесть ночью"), KeyboardButton(text="🎲 Случайное место")],
-            [KeyboardButton(text="ℹ️ Помощь")],
+            [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
     )
@@ -432,8 +430,9 @@ def format_place(place: dict) -> str:
 async def start_handler(message: Message):
     await message.answer(
         "🍴 Где поесть в Каменске\n\nВыбери категорию:",
-      reply_markup=get_main_keyboard()
+        reply_markup=get_main_keyboard()
     )
+
 @dp.message(F.text == "ℹ️ Помощь")
 @dp.message(F.text == "/help")
 async def help_handler(message: Message):
@@ -448,6 +447,7 @@ async def help_handler(message: Message):
         "/start — открыть меню\n"
         "/help — помощь"
     )
+
 @dp.message(F.text.in_(PLACES.keys()))
 async def category_handler(message: Message):
     category = message.text
@@ -463,6 +463,7 @@ async def category_handler(message: Message):
             parse_mode="HTML",
             reply_markup=card_buttons(place["url"]),
         )
+
 @dp.message(F.text == "⭐ Лучшие места")
 async def top_handler(message: Message):
     await message.answer("⭐ Лучшие места в Каменске-Уральском:")
@@ -475,6 +476,7 @@ async def top_handler(message: Message):
                 parse_mode="HTML",
                 reply_markup=card_buttons(place["url"]),
             )
+
 @dp.message(F.text == "🌙 Где поесть ночью")
 async def night_handler(message: Message):
     await message.answer("🌙 Места, которые часто работают допоздна:")
@@ -487,6 +489,7 @@ async def night_handler(message: Message):
                 parse_mode="HTML",
                 reply_markup=card_buttons(place["url"]),
             )
+
 @dp.message(F.text == "🎲 Случайное место")
 async def random_handler(message: Message):
     place = random.choice(all_places_list())
@@ -496,17 +499,19 @@ async def random_handler(message: Message):
         parse_mode="HTML",
         reply_markup=card_buttons(place["url"]),
     )
-@dp.message()
-async def fallback_handler(message: Message):
-    await message.answer("Нажми /start и выбери кнопку из меню.")
 
-async def main():
-  @dp.message(F.text == "⬅️ Назад")
+@dp.message(F.text == "⬅️ Назад")
 async def back_handler(message: Message):
     await message.answer(
         "🍴 Снова главное меню\n\nВыбери категорию:",
         reply_markup=get_main_keyboard()
     )
+
+@dp.message()
+async def fallback_handler(message: Message):
+    await message.answer("Нажми /start и выбери кнопку из меню.")
+
+async def main():
     me = await bot.get_me()
     print(f"BOT STARTED: @{me.username}", flush=True)
     await bot.delete_webhook(drop_pending_updates=True)
