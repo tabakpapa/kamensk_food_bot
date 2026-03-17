@@ -20,7 +20,6 @@ bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 PLACES = {
-   PLACES = {
     "🍔 Бургеры": [
         {
             "name": "Бургер Кинг",
@@ -358,7 +357,7 @@ PLACES = {
             "desc": "Бар / кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо бар",
         },
-    ]
+    ],
 }
 
 TOP_PLACES = [
