@@ -433,6 +433,7 @@ def get_main_keyboard():
             [KeyboardButton(text="🍺 Бары"), KeyboardButton(text="⭐ Лучшие места")],
             [KeyboardButton(text="🌙 Где поесть ночью"), KeyboardButton(text="🎲 Случайное место")],
             [KeyboardButton(text="❤️ Моё избранное")],
+            [KeyboardButton(text="🧠 Подобрать место")],
             [KeyboardButton(text="ℹ️ Помощь")],
         ],
         resize_keyboard=True
@@ -445,7 +446,17 @@ def get_back_keyboard():
         ],
         resize_keyboard=True
     )
-
+    
+def get_smart_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="💸 Дёшево"), KeyboardButton(text="⚡ Быстро")],
+            [KeyboardButton(text="☕ Посидеть"), KeyboardButton(text="🌙 Ночью")],
+            [KeyboardButton(text="⬅️ Назад")],
+        ],
+        resize_keyboard=True
+    )
+    
 def get_place_score(place_id: str):
     data = RATINGS.get(place_id, {"up": 0, "down": 0})
     return data["up"], data["down"]
@@ -490,7 +501,78 @@ def format_place(place: dict) -> str:
         f"⭐ {place['rating']}\n"
         f"📝 {place['desc']}"
     )
+    
+@dp.message(F.text == "🧠 Подобрать место")
+async def smart_menu_handler(message: Message):
+    await message.answer(
+        "Выбери, что ты хочешь:",
+        reply_markup=get_smart_keyboard()
+    )
 
+@dp.message(F.text == "💸 Дёшево")
+async def cheap_handler(message: Message):
+    places = all_places_list()
+
+    # просто берём случайные (пока без цен)
+    selected = random.sample(places, min(5, len(places)))
+
+    await message.answer("💸 Недорогие варианты:")
+
+    for place in selected:
+        await message.answer(
+            format_place(place),
+            parse_mode="HTML",
+            reply_markup=card_buttons(place),
+        )
+
+
+@dp.message(F.text == "⚡ Быстро")
+async def fast_handler(message: Message):
+    fast_categories = ["🍔 Бургеры", "🌯 Шаурма"]
+
+    result = []
+    for cat in fast_categories:
+        result.extend(PLACES.get(cat, []))
+
+    selected = random.sample(result, min(5, len(result)))
+
+    await message.answer("⚡ Быстрый перекус:")
+
+    for place in selected:
+        await message.answer(
+            format_place(place),
+            parse_mode="HTML",
+            reply_markup=card_buttons(place),
+        )
+
+
+@dp.message(F.text == "☕ Посидеть")
+async def chill_handler(message: Message):
+    places = PLACES.get("☕ Кофе", [])
+
+    await message.answer("☕ Места для посидеть:")
+
+    for place in places:
+        await message.answer(
+            format_place(place),
+            parse_mode="HTML",
+            reply_markup=card_buttons(place),
+        )
+
+
+@dp.message(F.text == "🌙 Ночью")
+async def night_smart_handler(message: Message):
+    await message.answer("🌙 Где поесть ночью:")
+
+    for name in NIGHT_PLACES:
+        place = find_place_by_name(name)
+        if place:
+            await message.answer(
+                format_place(place),
+                parse_mode="HTML",
+                reply_markup=card_buttons(place),
+            )
+            
 @dp.message(CommandStart())
 async def start_handler(message: Message):
     await message.answer(
