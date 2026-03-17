@@ -388,7 +388,7 @@ def get_main_keyboard():
         ],
         resize_keyboard=True
     )
-    def get_main_keyboard():
+def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🍔 Бургеры"), KeyboardButton(text="🌯 Шаурма")],
