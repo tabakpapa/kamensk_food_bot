@@ -428,6 +428,15 @@ NIGHT_PLACES = [
 def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
+            [KeyboardButton(text="🏆 Топ по категориям")],
+            keyboard=[
+    [KeyboardButton(text="🍔 Бургеры"), KeyboardButton(text="🌯 Шаурма")],
+    [KeyboardButton(text="🍕 Пицца"), KeyboardButton(text="☕ Кофе")],
+    [KeyboardButton(text="🍺 Бары"), KeyboardButton(text="⭐ Лучшие места")],
+    [KeyboardButton(text="🌙 Где поесть ночью"), KeyboardButton(text="🎲 Случайное место")],
+    [KeyboardButton(text="🏆 Топ по категориям")],
+    [KeyboardButton(text="ℹ️ Помощь")],
+]
             [KeyboardButton(text="🍔 Бургеры"), KeyboardButton(text="🌯 Шаурма")],
             [KeyboardButton(text="🍕 Пицца"), KeyboardButton(text="☕ Кофе")],
             [KeyboardButton(text="🍺 Бары"), KeyboardButton(text="⭐ Лучшие места")],
@@ -435,6 +444,17 @@ def get_main_keyboard():
             [KeyboardButton(text="❤️ Моё избранное")],
             [KeyboardButton(text="🧠 Подобрать место")],
             [KeyboardButton(text="ℹ️ Помощь")],
+        ],
+        resize_keyboard=True
+    )
+
+def get_top_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🍔 Топ бургеры"), KeyboardButton(text="🌯 Топ шаурма")],
+            [KeyboardButton(text="🍕 Топ пицца"), KeyboardButton(text="☕ Топ кофе")],
+            [KeyboardButton(text="🍺 Топ бары")],
+            [KeyboardButton(text="⬅️ Назад")],
         ],
         resize_keyboard=True
     )
@@ -515,6 +535,54 @@ def sort_places_by_score(places: list[dict]) -> list[dict]:
         ),
         reverse=True
     )
+
+@dp.message(F.text == "🏆 Топ по категориям")
+async def top_menu_handler(message: Message):
+    await message.answer(
+        "🏆 Выбери категорию:",
+        reply_markup=get_top_keyboard()
+    )
+
+async def send_top(message: Message, category: str, title: str):
+    places = PLACES.get(category, [])
+    places = sort_places_by_score(places)[:5]
+
+    await message.answer(title, reply_markup=get_back_keyboard())
+
+    if not places:
+        await message.answer("Пока нет данных.")
+        return
+
+    for place in places:
+        await message.answer(
+            format_place(place),
+            parse_mode="HTML",
+            reply_markup=card_buttons(place),
+        )
+
+@dp.message(F.text == "🍔 Топ бургеры")
+async def top_burgers(message: Message):
+    await send_top(message, "🍔 Бургеры", "🍔 Лучшие бургеры:")
+
+
+@dp.message(F.text == "🌯 Топ шаурма")
+async def top_shaurma(message: Message):
+    await send_top(message, "🌯 Шаурма", "🌯 Лучшая шаурма:")
+
+
+@dp.message(F.text == "🍕 Топ пицца")
+async def top_pizza(message: Message):
+    await send_top(message, "🍕 Пицца", "🍕 Лучшая пицца:")
+
+
+@dp.message(F.text == "☕ Топ кофе")
+async def top_coffee(message: Message):
+    await send_top(message, "☕ Кофе", "☕ Лучший кофе:")
+
+
+@dp.message(F.text == "🍺 Топ бары")
+async def top_bars(message: Message):
+    await send_top(message, "🍺 Бары", "🍺 Лучшие бары:")
     
 @dp.message(F.text == "🧠 Подобрать место")
 async def smart_menu_handler(message: Message):
