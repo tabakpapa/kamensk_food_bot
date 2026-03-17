@@ -9,6 +9,7 @@ from aiogram.types import (
     KeyboardButton,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
+    CallbackQuery,
 )
 
 TOKEN = os.getenv("BOT_TOKEN")
@@ -19,9 +20,13 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
+# user_id -> list of place dict
+FAVORITES = {}
+
 PLACES = {
     "🍔 Бургеры": [
         {
+            "id": "burger_1",
             "name": "Бургер Кинг",
             "address": "просп. Победы, 65",
             "hours": "Уточняй в картах",
@@ -30,6 +35,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Бургер Кинг проспект Победы 65",
         },
         {
+            "id": "burger_2",
             "name": "Rostic's",
             "address": "ул. Суворова, 24",
             "hours": "До 00:00",
@@ -38,6 +44,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Rostic's Суворова 24",
         },
         {
+            "id": "burger_3",
             "name": "Шампурико",
             "address": "Алюминиевая ул., 77Б",
             "hours": "С 10:30",
@@ -46,6 +53,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шампурико Алюминиевая 77Б",
         },
         {
+            "id": "burger_4",
             "name": "Седьмое небо",
             "address": "Каменская ул., 79Б",
             "hours": "Уточняй в картах",
@@ -54,6 +62,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
         },
         {
+            "id": "burger_5",
             "name": "Subjoy",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -62,6 +71,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Subjoy",
         },
         {
+            "id": "burger_6",
             "name": "Русская забава",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -72,6 +82,7 @@ PLACES = {
     ],
     "🌯 Шаурма": [
         {
+            "id": "shawarma_1",
             "name": "Шаурма Маркет",
             "address": "ул. Ленина, 13А",
             "hours": "Уточняй в картах",
@@ -80,6 +91,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма Маркет Ленина 13А",
         },
         {
+            "id": "shawarma_2",
             "name": "Лаваш",
             "address": "Алюминиевая ул., 78",
             "hours": "С 09:00",
@@ -88,6 +100,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Лаваш Алюминиевая 78",
         },
         {
+            "id": "shawarma_3",
             "name": "Мясной Батя",
             "address": "просп. Победы, 75Б",
             "hours": "С 10:00",
@@ -96,6 +109,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Мясной Батя проспект Победы 75Б",
         },
         {
+            "id": "shawarma_4",
             "name": "По шаурме",
             "address": "просп. Победы, 19",
             "hours": "Уточняй в картах",
@@ -104,6 +118,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский По шаурме проспект Победы 19",
         },
         {
+            "id": "shawarma_5",
             "name": "Шаурма",
             "address": "Каменская ул., 82Б",
             "hours": "С 09:00",
@@ -112,6 +127,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма Каменская 82Б",
         },
         {
+            "id": "shawarma_6",
             "name": "Шаурма восточная",
             "address": "ул. Бугарева, 3",
             "hours": "Уточняй в картах",
@@ -120,6 +136,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма восточная Бугарева 3",
         },
         {
+            "id": "shawarma_7",
             "name": "Мангал",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -128,6 +145,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Мангал",
         },
         {
+            "id": "shawarma_8",
             "name": "Седьмое небо",
             "address": "Каменская ул., 79Б",
             "hours": "Уточняй в картах",
@@ -136,6 +154,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
         },
         {
+            "id": "shawarma_9",
             "name": "Шампурико",
             "address": "Алюминиевая ул., 77Б",
             "hours": "С 10:30",
@@ -146,6 +165,7 @@ PLACES = {
     ],
     "🍕 Пицца": [
         {
+            "id": "pizza_1",
             "name": "Додо Пицца",
             "address": "Каменская ул., 91",
             "hours": "Уточняй в картах",
@@ -154,6 +174,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца Каменская 91",
         },
         {
+            "id": "pizza_2",
             "name": "Додо Пицца",
             "address": "просп. Победы, 44",
             "hours": "Уточняй в картах",
@@ -162,6 +183,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца проспект Победы 44",
         },
         {
+            "id": "pizza_3",
             "name": "Pizza Mia",
             "address": "ул. Суворова, 18",
             "hours": "С 11:00",
@@ -170,6 +192,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia Суворова 18",
         },
         {
+            "id": "pizza_4",
             "name": "Pizza Mia",
             "address": "просп. Победы, 51А",
             "hours": "С 11:00",
@@ -178,6 +201,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia проспект Победы 51А",
         },
         {
+            "id": "pizza_5",
             "name": "Италиан Пицца",
             "address": "ул. Суворова, 23А",
             "hours": "С 09:00",
@@ -186,6 +210,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца Суворова 23А",
         },
         {
+            "id": "pizza_6",
             "name": "Италиан Пицца",
             "address": "просп. Победы, 44",
             "hours": "Уточняй в картах",
@@ -194,6 +219,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца проспект Победы 44",
         },
         {
+            "id": "pizza_7",
             "name": "Pizzatime",
             "address": "Каменская ул., 12",
             "hours": "С 12:00",
@@ -202,6 +228,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizzatime Каменская 12",
         },
         {
+            "id": "pizza_8",
             "name": "Sushkof i Pizza",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -210,6 +237,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Sushkof i Pizza",
         },
         {
+            "id": "pizza_9",
             "name": "Большие тарелки",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -218,6 +246,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Большие тарелки",
         },
         {
+            "id": "pizza_10",
             "name": "Седьмое небо",
             "address": "Каменская ул., 79Б",
             "hours": "Уточняй в картах",
@@ -228,6 +257,7 @@ PLACES = {
     ],
     "☕ Кофе": [
         {
+            "id": "coffee_1",
             "name": "Dozacoffee",
             "address": "Алюминиевая ул., 45",
             "hours": "До 21:00",
@@ -236,6 +266,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Dozacoffee Алюминиевая 45",
         },
         {
+            "id": "coffee_2",
             "name": "Черный лис",
             "address": "просп. Победы, 6",
             "hours": "Уточняй в картах",
@@ -244,6 +275,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Черный лис проспект Победы 6",
         },
         {
+            "id": "coffee_3",
             "name": "Черный лис",
             "address": "Алюминиевая ул., 68",
             "hours": "Уточняй в картах",
@@ -252,6 +284,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Черный лис Алюминиевая 68",
         },
         {
+            "id": "coffee_4",
             "name": "Coffee Print",
             "address": "просп. Победы, 65",
             "hours": "С 10:00",
@@ -260,6 +293,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Coffee Print проспект Победы 65",
         },
         {
+            "id": "coffee_5",
             "name": "По любви",
             "address": "Алюминиевая ул., 37",
             "hours": "Уточняй в картах",
@@ -268,6 +302,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский По любви Алюминиевая 37",
         },
         {
+            "id": "coffee_6",
             "name": "Это твой кофе",
             "address": "ул. Суворова, 24",
             "hours": "Уточняй в картах",
@@ -276,6 +311,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Это твой кофе Суворова 24",
         },
         {
+            "id": "coffee_7",
             "name": "Bubble Cafe",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -284,6 +320,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Bubble Cafe",
         },
         {
+            "id": "coffee_8",
             "name": "Avokado Gold",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -292,6 +329,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Avokado Gold",
         },
         {
+            "id": "coffee_9",
             "name": "На Берегу",
             "address": "Набережная ул., 9",
             "hours": "Уточняй в картах",
@@ -302,6 +340,7 @@ PLACES = {
     ],
     "🍺 Бары": [
         {
+            "id": "bar_1",
             "name": "Хрущёвка",
             "address": "Каменская ул., 12",
             "hours": "Уточняй в картах",
@@ -310,6 +349,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Хрущёвка Каменская 12",
         },
         {
+            "id": "bar_2",
             "name": "Моджо",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -318,6 +358,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Моджо",
         },
         {
+            "id": "bar_3",
             "name": "K1",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -326,6 +367,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский K1",
         },
         {
+            "id": "bar_4",
             "name": "Генрих и Генриетта",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -334,6 +376,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Генрих и Генриетта",
         },
         {
+            "id": "bar_5",
             "name": "Шахта",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -342,6 +385,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шахта",
         },
         {
+            "id": "bar_6",
             "name": "Роял Рум",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -350,6 +394,7 @@ PLACES = {
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Роял Рум",
         },
         {
+            "id": "bar_7",
             "name": "Седьмое небо",
             "address": "Адрес уточняй в картах",
             "hours": "Уточняй в картах",
@@ -385,6 +430,7 @@ def get_main_keyboard():
             [KeyboardButton(text="🍕 Пицца"), KeyboardButton(text="☕ Кофе")],
             [KeyboardButton(text="🍺 Бары"), KeyboardButton(text="⭐ Лучшие места")],
             [KeyboardButton(text="🌙 Где поесть ночью"), KeyboardButton(text="🎲 Случайное место")],
+            [KeyboardButton(text="❤️ Моё избранное")],
             [KeyboardButton(text="ℹ️ Помощь")],
         ],
         resize_keyboard=True
@@ -398,10 +444,11 @@ def get_back_keyboard():
         resize_keyboard=True
     )
 
-def card_buttons(url: str) -> InlineKeyboardMarkup:
+def card_buttons(place: dict) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=url)]
+            [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])],
+            [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")],
         ]
     )
 
@@ -414,6 +461,12 @@ def all_places_list():
 def find_place_by_name(name: str):
     for place in all_places_list():
         if place["name"] == name:
+            return place
+    return None
+
+def find_place_by_id(place_id: str):
+    for place in all_places_list():
+        if place["id"] == place_id:
             return place
     return None
 
@@ -442,7 +495,8 @@ async def help_handler(message: Message):
         "• открывает заведения в Яндекс Картах\n"
         "• показывает лучшие места\n"
         "• показывает места, где можно поесть ночью\n"
-        "• выбирает случайное место\n\n"
+        "• выбирает случайное место\n"
+        "• умеет сохранять места в избранное\n\n"
         "Команды:\n"
         "/start — открыть меню\n"
         "/help — помощь"
@@ -461,12 +515,15 @@ async def category_handler(message: Message):
         await message.answer(
             format_place(place),
             parse_mode="HTML",
-            reply_markup=card_buttons(place["url"]),
+            reply_markup=card_buttons(place),
         )
 
 @dp.message(F.text == "⭐ Лучшие места")
 async def top_handler(message: Message):
-    await message.answer("⭐ Лучшие места в Каменске-Уральском:")
+    await message.answer(
+        "⭐ Лучшие места в Каменске-Уральском:",
+        reply_markup=get_back_keyboard()
+    )
 
     for name in TOP_PLACES:
         place = find_place_by_name(name)
@@ -474,12 +531,15 @@ async def top_handler(message: Message):
             await message.answer(
                 format_place(place),
                 parse_mode="HTML",
-                reply_markup=card_buttons(place["url"]),
+                reply_markup=card_buttons(place),
             )
 
 @dp.message(F.text == "🌙 Где поесть ночью")
 async def night_handler(message: Message):
-    await message.answer("🌙 Места, которые часто работают допоздна:")
+    await message.answer(
+        "🌙 Места, которые часто работают допоздна:",
+        reply_markup=get_back_keyboard()
+    )
 
     for name in NIGHT_PLACES:
         place = find_place_by_name(name)
@@ -487,18 +547,67 @@ async def night_handler(message: Message):
             await message.answer(
                 format_place(place),
                 parse_mode="HTML",
-                reply_markup=card_buttons(place["url"]),
+                reply_markup=card_buttons(place),
             )
 
 @dp.message(F.text == "🎲 Случайное место")
 async def random_handler(message: Message):
     place = random.choice(all_places_list())
-    await message.answer("🎲 Сегодня попробуй:")
+    await message.answer(
+        "🎲 Сегодня попробуй:",
+        reply_markup=get_back_keyboard()
+    )
     await message.answer(
         format_place(place),
         parse_mode="HTML",
-        reply_markup=card_buttons(place["url"]),
+        reply_markup=card_buttons(place),
     )
+
+@dp.message(F.text == "❤️ Моё избранное")
+async def favorites_handler(message: Message):
+    user_id = message.from_user.id
+    user_favorites = FAVORITES.get(user_id, [])
+
+    if not user_favorites:
+        await message.answer(
+            "У тебя пока нет избранных мест.",
+            reply_markup=get_back_keyboard()
+        )
+        return
+
+    await message.answer(
+        "❤️ Твоё избранное:",
+        reply_markup=get_back_keyboard()
+    )
+
+    for place in user_favorites:
+        await message.answer(
+            format_place(place),
+            parse_mode="HTML",
+            reply_markup=card_buttons(place),
+        )
+
+@dp.callback_query(F.data.startswith("fav:"))
+async def add_to_favorites_handler(callback: CallbackQuery):
+    user_id = callback.from_user.id
+    place_id = callback.data.split(":", 1)[1]
+    place = find_place_by_id(place_id)
+
+    if not place:
+        await callback.answer("Место не найдено", show_alert=True)
+        return
+
+    if user_id not in FAVORITES:
+        FAVORITES[user_id] = []
+
+    already_added = any(saved_place["id"] == place["id"] for saved_place in FAVORITES[user_id])
+
+    if already_added:
+        await callback.answer("Уже в избранном ❤️", show_alert=False)
+        return
+
+    FAVORITES[user_id].append(place)
+    await callback.answer("Добавлено в избранное ❤️", show_alert=False)
 
 @dp.message(F.text == "⬅️ Назад")
 async def back_handler(message: Message):
