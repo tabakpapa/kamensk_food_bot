@@ -502,6 +502,21 @@ def format_place(place: dict) -> str:
         f"📝 {place['desc']}"
     )
     
+  def get_place_rating_score(place: dict) -> int:
+    data = RATINGS.get(place["id"], {"up": 0, "down": 0})
+    return data["up"] - data["down"]
+
+
+def sort_places_by_score(places: list[dict]) -> list[dict]:
+    return sorted(
+        places,
+        key=lambda p: (
+            get_place_rating_score(p),
+            RATINGS.get(p["id"], {"up": 0})["up"]
+        ),
+        reverse=True
+    )
+    
 @dp.message(F.text == "🧠 Подобрать место")
 async def smart_menu_handler(message: Message):
     await message.answer(
@@ -511,14 +526,32 @@ async def smart_menu_handler(message: Message):
 
 @dp.message(F.text == "💸 Дёшево")
 async def cheap_handler(message: Message):
-    places = all_places_list()
+    cheap_keywords = [
+        "шаурма", "шаверма", "бургер", "стритфуд", "перекус", "фастфуд"
+    ]
 
-    # просто берём случайные (пока без цен)
-    selected = random.sample(places, min(5, len(places)))
+    result = []
+    for place in all_places_list():
+        text = (
+            place["name"].lower()
+            + " "
+            + place["desc"].lower()
+        )
+        if any(word in text for word in cheap_keywords):
+            result.append(place)
 
-    await message.answer("💸 Недорогие варианты:")
+    result = sort_places_by_score(result)[:5]
 
-    for place in selected:
+    await message.answer(
+        "💸 Недорогие варианты:",
+        reply_markup=get_back_keyboard()
+    )
+
+    if not result:
+        await message.answer("Пока ничего не найдено.")
+        return
+
+    for place in result:
         await message.answer(
             format_place(place),
             parse_mode="HTML",
@@ -534,25 +567,39 @@ async def fast_handler(message: Message):
     for cat in fast_categories:
         result.extend(PLACES.get(cat, []))
 
-    selected = random.sample(result, min(5, len(result)))
+    result = sort_places_by_score(result)[:5]
 
-    await message.answer("⚡ Быстрый перекус:")
+    await message.answer(
+        "⚡ Быстрый перекус:",
+        reply_markup=get_back_keyboard()
+    )
 
-    for place in selected:
+    if not result:
+        await message.answer("Пока ничего не найдено.")
+        return
+
+    for place in result:
         await message.answer(
             format_place(place),
             parse_mode="HTML",
             reply_markup=card_buttons(place),
         )
 
-
 @dp.message(F.text == "☕ Посидеть")
 async def chill_handler(message: Message):
-    places = PLACES.get("☕ Кофе", [])
+    result = PLACES.get("☕ Кофе", []) + PLACES.get("🍺 Бары", [])
+    result = sort_places_by_score(result)[:6]
 
-    await message.answer("☕ Места для посидеть:")
+    await message.answer(
+        "☕ Где можно посидеть:",
+        reply_markup=get_back_keyboard()
+    )
 
-    for place in places:
+    if not result:
+        await message.answer("Пока ничего не найдено.")
+        return
+
+    for place in result:
         await message.answer(
             format_place(place),
             parse_mode="HTML",
@@ -562,16 +609,30 @@ async def chill_handler(message: Message):
 
 @dp.message(F.text == "🌙 Ночью")
 async def night_smart_handler(message: Message):
-    await message.answer("🌙 Где поесть ночью:")
+    result = []
 
     for name in NIGHT_PLACES:
         place = find_place_by_name(name)
         if place:
-            await message.answer(
-                format_place(place),
-                parse_mode="HTML",
-                reply_markup=card_buttons(place),
-            )
+            result.append(place)
+
+    result = sort_places_by_score(result)
+
+    await message.answer(
+        "🌙 Где поесть ночью:",
+        reply_markup=get_back_keyboard()
+    )
+
+    if not result:
+        await message.answer("Пока ничего не найдено.")
+        return
+
+    for place in result:
+        await message.answer(
+            format_place(place),
+            parse_mode="HTML",
+            reply_markup=card_buttons(place),
+        )
             
 @dp.message(CommandStart())
 async def start_handler(message: Message):
