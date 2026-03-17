@@ -502,10 +502,9 @@ def format_place(place: dict) -> str:
         f"📝 {place['desc']}"
     )
     
-  def get_place_rating_score(place: dict) -> int:
+def get_place_rating_score(place: dict) -> int:
     data = RATINGS.get(place["id"], {"up": 0, "down": 0})
     return data["up"] - data["down"]
-
 
 def sort_places_by_score(places: list[dict]) -> list[dict]:
     return sorted(
