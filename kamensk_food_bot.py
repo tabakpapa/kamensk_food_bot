@@ -22,6 +22,7 @@ dp = Dispatcher()
 
 # user_id -> list of place dict
 FAVORITES = {}
+RATINGS = {}
 
 PLACES = {
     "🍔 Бургеры": [
@@ -444,11 +445,21 @@ def get_back_keyboard():
         resize_keyboard=True
     )
 
+def get_place_score(place_id: str):
+    data = RATINGS.get(place_id, {"up": 0, "down": 0})
+    return data["up"], data["down"]
+
 def card_buttons(place: dict) -> InlineKeyboardMarkup:
+    up, down = get_place_score(place["id"])
+
     return InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])],
             [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")],
+            [
+                InlineKeyboardButton(text=f"👍 {up}", callback_data=f"like:{place['id']}"),
+                InlineKeyboardButton(text=f"👎 {down}", callback_data=f"dislike:{place['id']}"),
+            ],
         ]
     )
 
@@ -592,6 +603,25 @@ async def add_to_favorites_handler(callback: CallbackQuery):
     user_id = callback.from_user.id
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
+    @dp.callback_query(F.data.startswith("like:"))
+async def like_handler(callback: CallbackQuery):
+    place_id = callback.data.split(":", 1)[1]
+
+    if place_id not in RATINGS:
+        RATINGS[place_id] = {"up": 0, "down": 0}
+
+    RATINGS[place_id]["up"] += 1
+    await callback.answer("Ты поставил 👍")
+
+@dp.callback_query(F.data.startswith("dislike:"))
+async def dislike_handler(callback: CallbackQuery):
+    place_id = callback.data.split(":", 1)[1]
+
+    if place_id not in RATINGS:
+        RATINGS[place_id] = {"up": 0, "down": 0}
+
+    RATINGS[place_id]["down"] += 1
+    await callback.answer("Ты поставил 👎")
 
     if not place:
         await callback.answer("Место не найдено", show_alert=True)
