@@ -458,7 +458,7 @@ def get_top_keyboard():
         ],
         resize_keyboard=True
     )
-
+    
 def get_back_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
