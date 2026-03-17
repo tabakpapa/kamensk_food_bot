@@ -603,25 +603,6 @@ async def add_to_favorites_handler(callback: CallbackQuery):
     user_id = callback.from_user.id
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
-    @dp.callback_query(F.data.startswith("like:"))
-async def like_handler(callback: CallbackQuery):
-    place_id = callback.data.split(":", 1)[1]
-
-    if place_id not in RATINGS:
-        RATINGS[place_id] = {"up": 0, "down": 0}
-
-    RATINGS[place_id]["up"] += 1
-    await callback.answer("Ты поставил 👍")
-
-@dp.callback_query(F.data.startswith("dislike:"))
-async def dislike_handler(callback: CallbackQuery):
-    place_id = callback.data.split(":", 1)[1]
-
-    if place_id not in RATINGS:
-        RATINGS[place_id] = {"up": 0, "down": 0}
-
-    RATINGS[place_id]["down"] += 1
-    await callback.answer("Ты поставил 👎")
 
     if not place:
         await callback.answer("Место не найдено", show_alert=True)
@@ -639,12 +620,36 @@ async def dislike_handler(callback: CallbackQuery):
     FAVORITES[user_id].append(place)
     await callback.answer("Добавлено в избранное ❤️", show_alert=False)
 
+
+@dp.callback_query(F.data.startswith("like:"))
+async def like_handler(callback: CallbackQuery):
+    place_id = callback.data.split(":", 1)[1]
+
+    if place_id not in RATINGS:
+        RATINGS[place_id] = {"up": 0, "down": 0}
+
+    RATINGS[place_id]["up"] += 1
+    await callback.answer("Ты поставил 👍")
+
+
+@dp.callback_query(F.data.startswith("dislike:"))
+async def dislike_handler(callback: CallbackQuery):
+    place_id = callback.data.split(":", 1)[1]
+
+    if place_id not in RATINGS:
+        RATINGS[place_id] = {"up": 0, "down": 0}
+
+    RATINGS[place_id]["down"] += 1
+    await callback.answer("Ты поставил 👎")
+
+
 @dp.message(F.text == "⬅️ Назад")
 async def back_handler(message: Message):
     await message.answer(
         "🍴 Снова главное меню\n\nВыбери категорию:",
         reply_markup=get_main_keyboard()
     )
+
 
 @dp.message()
 async def fallback_handler(message: Message):
