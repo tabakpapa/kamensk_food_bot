@@ -624,6 +624,20 @@ async def add_to_favorites_handler(callback: CallbackQuery):
 @dp.callback_query(F.data.startswith("like:"))
 async def like_handler(callback: CallbackQuery):
     place_id = callback.data.split(":", 1)[1]
+    place = find_place_by_id(place_id)
+
+    if place_id not in RATINGS:
+        RATINGS[place_id] = {"up": 0, "down": 0}
+
+    RATINGS[place_id]["up"] += 1
+
+    # обновляем кнопки
+    await callback.message.edit_reply_markup(
+        reply_markup=card_buttons(place)
+    )
+
+    await callback.answer("👍")
+    place_id = callback.data.split(":", 1)[1]
 
     if place_id not in RATINGS:
         RATINGS[place_id] = {"up": 0, "down": 0}
@@ -633,6 +647,21 @@ async def like_handler(callback: CallbackQuery):
 
 
 @dp.callback_query(F.data.startswith("dislike:"))
+async def dislike_handler(callback: CallbackQuery):
+    place_id = callback.data.split(":", 1)[1]
+    place = find_place_by_id(place_id)
+
+    if place_id not in RATINGS:
+        RATINGS[place_id] = {"up": 0, "down": 0}
+
+    RATINGS[place_id]["down"] += 1
+
+    # обновляем кнопки
+    await callback.message.edit_reply_markup(
+        reply_markup=card_buttons(place)
+    )
+
+    await callback.answer("👎")
 async def dislike_handler(callback: CallbackQuery):
     place_id = callback.data.split(":", 1)[1]
 
