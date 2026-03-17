@@ -358,7 +358,7 @@ PLACES = {
             "desc": "Бар / кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо бар",
         },
-    ],
+    ]
 }
 
 TOP_PLACES = [
