@@ -128,7 +128,7 @@ async def start_handler(message: Message):
         "🍴 Где поесть в Каменске\n\nВыбери категорию:",
         reply_markup=menu
     )
- @dp.message(F.text == "ℹ️ Помощь")
+@dp.message(F.text == "ℹ️ Помощь")
 @dp.message(F.text == "/help")
 async def help_handler(message: Message):
     await message.answer(
@@ -142,7 +142,6 @@ async def help_handler(message: Message):
         "/start — открыть меню\n"
         "/help — помощь"
     )
-
 @dp.message(F.text.in_(PLACES.keys()))
 async def category_handler(message: Message):
     category = message.text
@@ -154,7 +153,6 @@ async def category_handler(message: Message):
             parse_mode="HTML",
             reply_markup=card_buttons(place["url"]),
         )
-
 @dp.message(F.text == "⭐ Лучшие места")
 async def top_handler(message: Message):
     await message.answer("⭐ Лучшие места в Каменске-Уральском:")
@@ -167,7 +165,6 @@ async def top_handler(message: Message):
                 parse_mode="HTML",
                 reply_markup=card_buttons(place["url"]),
             )
-
 @dp.message(F.text == "🌙 Где поесть ночью")
 async def night_handler(message: Message):
     await message.answer("🌙 Места, которые часто работают допоздна:")
@@ -180,7 +177,6 @@ async def night_handler(message: Message):
                 parse_mode="HTML",
                 reply_markup=card_buttons(place["url"]),
             )
-
 @dp.message(F.text == "🎲 Случайное место")
 async def random_handler(message: Message):
     place = random.choice(all_places_list())
@@ -190,7 +186,6 @@ async def random_handler(message: Message):
         parse_mode="HTML",
         reply_markup=card_buttons(place["url"]),
     )
-
 @dp.message()
 async def fallback_handler(message: Message):
     await message.answer("Нажми /start и выбери кнопку из меню.")
