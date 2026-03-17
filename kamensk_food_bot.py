@@ -501,7 +501,7 @@ async def fallback_handler(message: Message):
     await message.answer("Нажми /start и выбери кнопку из меню.")
 
 async def main():
-    @dp.message(F.text == "⬅️ Назад")
+  @dp.message(F.text == "⬅️ Назад")
 async def back_handler(message: Message):
     await message.answer(
         "🍴 Снова главное меню\n\nВыбери категорию:",
