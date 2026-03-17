@@ -20,7 +20,6 @@ if not TOKEN:
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-# user_id -> list of place dict
 FAVORITES = {}
 RATINGS = {}
 USER_VOTES = {}
@@ -768,19 +767,6 @@ async def top_handler(message: Message):
             parse_mode="HTML",
             reply_markup=card_buttons(place),
         )
-    await message.answer(
-        "⭐ Лучшие места в Каменске-Уральском:",
-        reply_markup=get_back_keyboard()
-    )
-
-    for name in TOP_PLACES:
-        place = find_place_by_name(name)
-        if place:
-            await message.answer(
-                format_place(place),
-                parse_mode="HTML",
-                reply_markup=card_buttons(place),
-            )
 
 @dp.message(F.text == "🌙 Где поесть ночью")
 async def night_handler(message: Message):
