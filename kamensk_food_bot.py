@@ -427,21 +427,13 @@ NIGHT_PLACES = [
 def get_main_keyboard():
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏆 Топ по категориям")],
-            keyboard=[
-    [KeyboardButton(text="🍔 Бургеры"), KeyboardButton(text="🌯 Шаурма")],
-    [KeyboardButton(text="🍕 Пицца"), KeyboardButton(text="☕ Кофе")],
-    [KeyboardButton(text="🍺 Бары"), KeyboardButton(text="⭐ Лучшие места")],
-    [KeyboardButton(text="🌙 Где поесть ночью"), KeyboardButton(text="🎲 Случайное место")],
-    [KeyboardButton(text="🏆 Топ по категориям")],
-    [KeyboardButton(text="ℹ️ Помощь")],
-]
             [KeyboardButton(text="🍔 Бургеры"), KeyboardButton(text="🌯 Шаурма")],
             [KeyboardButton(text="🍕 Пицца"), KeyboardButton(text="☕ Кофе")],
             [KeyboardButton(text="🍺 Бары"), KeyboardButton(text="⭐ Лучшие места")],
             [KeyboardButton(text="🌙 Где поесть ночью"), KeyboardButton(text="🎲 Случайное место")],
-            [KeyboardButton(text="❤️ Моё избранное")],
             [KeyboardButton(text="🧠 Подобрать место")],
+            [KeyboardButton(text="🏆 Топ по категориям")],
+            [KeyboardButton(text="❤️ Моё избранное")],
             [KeyboardButton(text="ℹ️ Помощь")],
         ],
         resize_keyboard=True
