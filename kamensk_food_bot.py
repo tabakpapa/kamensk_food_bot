@@ -23,6 +23,7 @@ dp = Dispatcher()
 # user_id -> list of place dict
 FAVORITES = {}
 RATINGS = {}
+USER_VOTES = {}
 
 PLACES = {
     "🍔 Бургеры": [
@@ -623,52 +624,69 @@ async def add_to_favorites_handler(callback: CallbackQuery):
 
 @dp.callback_query(F.data.startswith("like:"))
 async def like_handler(callback: CallbackQuery):
+    user_id = callback.from_user.id
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
 
+    if not place:
+        await callback.answer("Место не найдено", show_alert=True)
+        return
+
     if place_id not in RATINGS:
         RATINGS[place_id] = {"up": 0, "down": 0}
 
-    RATINGS[place_id]["up"] += 1
+    if user_id not in USER_VOTES:
+        USER_VOTES[user_id] = {}
 
-    # обновляем кнопки
+    current_vote = USER_VOTES[user_id].get(place_id)
+
+    if current_vote == "like":
+        await callback.answer("Ты уже поставил 👍")
+        return
+
+    if current_vote == "dislike":
+        RATINGS[place_id]["down"] -= 1
+
+    RATINGS[place_id]["up"] += 1
+    USER_VOTES[user_id][place_id] = "like"
+
     await callback.message.edit_reply_markup(
         reply_markup=card_buttons(place)
     )
-
-    await callback.answer("👍")
-    place_id = callback.data.split(":", 1)[1]
-
-    if place_id not in RATINGS:
-        RATINGS[place_id] = {"up": 0, "down": 0}
-
-    RATINGS[place_id]["up"] += 1
     await callback.answer("Ты поставил 👍")
 
 
 @dp.callback_query(F.data.startswith("dislike:"))
 async def dislike_handler(callback: CallbackQuery):
+    user_id = callback.from_user.id
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
 
+    if not place:
+        await callback.answer("Место не найдено", show_alert=True)
+        return
+
     if place_id not in RATINGS:
         RATINGS[place_id] = {"up": 0, "down": 0}
 
-    RATINGS[place_id]["down"] += 1
+    if user_id not in USER_VOTES:
+        USER_VOTES[user_id] = {}
 
-    # обновляем кнопки
+    current_vote = USER_VOTES[user_id].get(place_id)
+
+    if current_vote == "dislike":
+        await callback.answer("Ты уже поставил 👎")
+        return
+
+    if current_vote == "like":
+        RATINGS[place_id]["up"] -= 1
+
+    RATINGS[place_id]["down"] += 1
+    USER_VOTES[user_id][place_id] = "dislike"
+
     await callback.message.edit_reply_markup(
         reply_markup=card_buttons(place)
     )
-
-    await callback.answer("👎")
-async def dislike_handler(callback: CallbackQuery):
-    place_id = callback.data.split(":", 1)[1]
-
-    if place_id not in RATINGS:
-        RATINGS[place_id] = {"up": 0, "down": 0}
-
-    RATINGS[place_id]["down"] += 1
     await callback.answer("Ты поставил 👎")
 
 
