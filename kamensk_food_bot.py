@@ -532,6 +532,32 @@ async def category_handler(message: Message):
 
 @dp.message(F.text == "⭐ Лучшие места")
 async def top_handler(message: Message):
+    all_places = all_places_list()
+
+    # сортируем по лайкам
+    sorted_places = sorted(
+        all_places,
+        key=lambda p: RATINGS.get(p["id"], {"up": 0})["up"],
+        reverse=True
+    )
+
+    top_places = sorted_places[:10]  # топ 10
+
+    await message.answer(
+        "⭐ Топ заведений по мнению пользователей:",
+        reply_markup=get_back_keyboard()
+    )
+
+    if not top_places:
+        await message.answer("Пока нет оценок.")
+        return
+
+    for place in top_places:
+        await message.answer(
+            format_place(place),
+            parse_mode="HTML",
+            reply_markup=card_buttons(place),
+        )
     await message.answer(
         "⭐ Лучшие места в Каменске-Уральском:",
         reply_markup=get_back_keyboard()
