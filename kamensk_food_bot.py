@@ -18,7 +18,7 @@ if not TOKEN:
     raise ValueError("Не задан BOT_TOKEN")
 
 # Замени на свой Telegram user ID
-ADMIN_ID = int(os.getenv("ADMIN_ID", "12345678"))
+ADMIN_ID = int(os.getenv("ADMIN_ID", TABAKPAPA))
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
