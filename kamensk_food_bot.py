@@ -27,11 +27,7 @@ dp = Dispatcher()
 
 USERS = set()
 BOT_USERNAME = None
-
-# user_id -> data for smart flow
 SMART_STATE = {}
-
-# simple in-memory counters
 SHOW_COUNTER = defaultdict(int)
 
 ADS = [
@@ -69,6 +65,13 @@ def init_db():
             place_id TEXT,
             vote TEXT,
             PRIMARY KEY (user_id, place_id)
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS partners (
+            place_id TEXT PRIMARY KEY,
+            is_partner INTEGER NOT NULL DEFAULT 0
         )
     """)
 
@@ -160,6 +163,31 @@ def count_votes_db(place_id: str):
     return up, down
 
 
+def set_partner_db(place_id: str, is_partner: bool):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO partners (place_id, is_partner)
+        VALUES (?, ?)
+        ON CONFLICT(place_id) DO UPDATE SET is_partner=excluded.is_partner
+    """, (place_id, 1 if is_partner else 0))
+    conn.commit()
+    conn.close()
+
+
+def get_partners_map():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT place_id, is_partner FROM partners")
+    rows = cur.fetchall()
+    conn.close()
+    return {place_id: bool(is_partner) for place_id, is_partner in rows}
+
+
+def is_admin(user_id: int) -> bool:
+    return user_id == ADMIN_ID
+
+
 PLACES = {
     "🍔 Бургеры": [
         {
@@ -174,7 +202,7 @@ PLACES = {
             "budget": "💸 До 500",
             "formats": ["👤 Один", "👥 Компания"],
             "food_type": "🍔 Бургеры",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": True,
         },
         {
@@ -189,7 +217,7 @@ PLACES = {
             "budget": "💸 До 500",
             "formats": ["👤 Один", "👥 Компания"],
             "food_type": "🍔 Бургеры",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": True,
         },
         {
@@ -201,10 +229,10 @@ PLACES = {
             "desc": "Стритфуд, мясо и блюда на гриле.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шампурико Алюминиевая 77Б",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👤 Один", "👥 Компания"],
             "food_type": "🍔 Бургеры",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -216,7 +244,7 @@ PLACES = {
             "desc": "Стритфуд, бургеры, шаурма и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👤 Один", "💑 Свидание", "👥 Компания"],
             "food_type": "🍔 Бургеры",
             "distance": "🚶 Рядом",
@@ -249,7 +277,7 @@ PLACES = {
             "budget": "💸 До 500",
             "formats": ["👤 Один"],
             "food_type": "🍔 Бургеры",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
     ],
@@ -296,7 +324,7 @@ PLACES = {
             "budget": "💸 До 500",
             "formats": ["👤 Один", "👥 Компания"],
             "food_type": "🌯 Шаурма",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -341,7 +369,7 @@ PLACES = {
             "budget": "💸 До 500",
             "formats": ["👤 Один"],
             "food_type": "🌯 Шаурма",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -353,10 +381,10 @@ PLACES = {
             "desc": "Шаурма, мясо и блюда на мангале.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Мангал",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👤 Один", "👥 Компания"],
             "food_type": "🌯 Шаурма",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -368,7 +396,7 @@ PLACES = {
             "desc": "Шаурма, бургеры и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👤 Один", "💑 Свидание", "👥 Компания"],
             "food_type": "🌯 Шаурма",
             "distance": "🚶 Рядом",
@@ -383,10 +411,10 @@ PLACES = {
             "desc": "Шаурма и блюда на гриле.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шампурико Алюминиевая 77Б",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👤 Один", "👥 Компания"],
             "food_type": "🌯 Шаурма",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
     ],
@@ -400,10 +428,10 @@ PLACES = {
             "desc": "Пицца, закуски, десерты и доставка.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца Каменская 91",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍕 Пицца",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -415,10 +443,10 @@ PLACES = {
             "desc": "Ещё одна точка Додо Пиццы.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца проспект Победы 44",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍕 Пицца",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -430,10 +458,10 @@ PLACES = {
             "desc": "Пицца и быстрые обеды.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia Суворова 18",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👤 Один", "👥 Компания"],
             "food_type": "🍕 Пицца",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -445,10 +473,10 @@ PLACES = {
             "desc": "Пицца, закуски и семейный формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia проспект Победы 51А",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👤 Один", "👥 Компания"],
             "food_type": "🍕 Пицца",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -460,7 +488,7 @@ PLACES = {
             "desc": "Пицца и итальянское меню.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца Суворова 23А",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍕 Пицца",
             "distance": "🚶 Рядом",
@@ -475,10 +503,10 @@ PLACES = {
             "desc": "Ещё одна точка Италиан Пиццы.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца проспект Победы 44",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍕 Пицца",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -490,7 +518,7 @@ PLACES = {
             "desc": "Пицца и быстрый перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizzatime Каменская 12",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👤 Один"],
             "food_type": "🍕 Пицца",
             "distance": "🚶 Рядом",
@@ -505,10 +533,10 @@ PLACES = {
             "desc": "Пицца, роллы и доставка.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Sushkof i Pizza",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍕 Пицца",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -520,10 +548,10 @@ PLACES = {
             "desc": "Пицца, горячие блюда и кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Большие тарелки",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍕 Пицца",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -535,7 +563,7 @@ PLACES = {
             "desc": "Стритфуд, шаурма и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍕 Пицца",
             "distance": "🚶 Рядом",
@@ -645,7 +673,7 @@ PLACES = {
             "budget": "💸 До 500",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "☕ Кофе",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -657,10 +685,10 @@ PLACES = {
             "desc": "Кафе и кофейные напитки.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Avokado Gold",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "☕ Кофе",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
         {
@@ -672,10 +700,10 @@ PLACES = {
             "desc": "Кофе и спокойное место.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский На Берегу Набережная 9",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание"],
             "food_type": "☕ Кофе",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": False,
         },
     ],
@@ -689,10 +717,10 @@ PLACES = {
             "desc": "Бар для вечерних встреч.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Хрущёвка Каменская 12",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👥 Компания", "💑 Свидание"],
             "food_type": "🍺 Бары",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": True,
         },
         {
@@ -704,10 +732,10 @@ PLACES = {
             "desc": "Бар с вечерней атмосферой.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Моджо",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👥 Компания", "💑 Свидание"],
             "food_type": "🍺 Бары",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": True,
         },
         {
@@ -719,10 +747,10 @@ PLACES = {
             "desc": "Бар и место для вечернего отдыха.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский K1",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👥 Компания"],
             "food_type": "🍺 Бары",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": True,
         },
         {
@@ -734,10 +762,10 @@ PLACES = {
             "desc": "Бар / паб-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Генрих и Генриетта",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍺 Бары",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": True,
         },
         {
@@ -749,10 +777,10 @@ PLACES = {
             "desc": "Бар и вечерний отдых.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шахта",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👥 Компания"],
             "food_type": "🍺 Бары",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": True,
         },
         {
@@ -764,10 +792,10 @@ PLACES = {
             "desc": "Бар и клубный формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Роял Рум",
             "is_partner": False,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["👥 Компания"],
             "food_type": "🍺 Бары",
-            "distance": "🚶 Не важно",
+            "distance": "🚕 Не важно",
             "night": True,
         },
         {
@@ -779,7 +807,7 @@ PLACES = {
             "desc": "Бар / кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо бар",
             "is_partner": True,
-            "budget": "💸 До 1000",
+            "budget": "💰 До 1000",
             "formats": ["💑 Свидание", "👥 Компания"],
             "food_type": "🍺 Бары",
             "distance": "🚶 Рядом",
@@ -796,6 +824,13 @@ NIGHT_PLACES = [
     "Генрих и Генриетта",
     "Седьмое небо",
 ]
+
+
+def apply_partner_flags_from_db():
+    partners_map = get_partners_map()
+    for place in all_places_list():
+        if place["id"] in partners_map:
+            place["is_partner"] = partners_map[place["id"]]
 
 
 def all_places_list():
@@ -817,6 +852,22 @@ def find_place_by_id(place_id: str):
         if place["id"] == place_id:
             return place
     return None
+
+
+def get_partner_places():
+    return [place for place in all_places_list() if place.get("is_partner", False)]
+
+
+def get_total_votes():
+    total_likes = 0
+    total_dislikes = 0
+
+    for place in all_places_list():
+        up, down = count_votes_db(place["id"])
+        total_likes += up
+        total_dislikes += down
+
+    return total_likes, total_dislikes
 
 
 def format_place(place: dict) -> str:
@@ -849,6 +900,38 @@ def sort_places_by_score(places: list[dict]) -> list[dict]:
         ),
         reverse=True
     )
+
+
+def get_most_popular_places(limit: int = 5):
+    return sort_places_by_score(all_places_list())[:limit]
+
+
+def format_admin_stats() -> str:
+    users_count = len(get_all_users())
+    places_count = len(all_places_list())
+    partners_count = len(get_partner_places())
+    likes, dislikes = get_total_votes()
+    top_places = get_most_popular_places(5)
+
+    text = (
+        f"📊 <b>Статистика бота</b>\n\n"
+        f"👥 Пользователей: {users_count}\n"
+        f"📍 Всего заведений: {places_count}\n"
+        f"🤝 Партнёров: {partners_count}\n"
+        f"👍 Всего лайков: {likes}\n"
+        f"👎 Всего дизлайков: {dislikes}\n\n"
+        f"🔥 <b>Топ-5 популярных мест:</b>\n"
+    )
+
+    if not top_places:
+        text += "Пока нет данных."
+        return text
+
+    for i, place in enumerate(top_places, start=1):
+        up, down = count_votes_db(place["id"])
+        text += f"{i}. {place['name']} (👍 {up} / 👎 {down})\n"
+
+    return text
 
 
 def build_share_url():
@@ -987,8 +1070,7 @@ async def send_place_card(message: Message, place: dict):
 
 
 async def send_ad_block(message: Message):
-    ad_text = random.choice(ADS)
-    await message.answer(ad_text, parse_mode="HTML")
+    await message.answer(random.choice(ADS), parse_mode="HTML")
 
 
 async def send_places_with_ad(message: Message, places: list[dict], title: str | None = None, limit: int = 5):
@@ -1047,21 +1129,71 @@ async def start_handler(message: Message):
 
 @dp.message(Command("admin"))
 async def admin_panel(message: Message):
-    if message.from_user.id != ADMIN_ID:
+    if not is_admin(message.from_user.id):
         return
 
     await message.answer(
-        f"👑 Админ-панель\n\n"
-        f"👥 Пользователей в базе: {len(get_all_users())}\n"
-        f"📍 Мест в базе: {len(all_places_list())}\n\n"
-        f"Для рассылки:\n"
-        f"/send Твой текст рекламы"
+        "👑 <b>Админ-панель</b>\n\n"
+        "Команды:\n"
+        "/admin — панель\n"
+        "/stats — полная статистика\n"
+        "/users — число пользователей\n"
+        "/partners — список партнёров\n"
+        "/promo — тест рекламного блока\n"
+        "/send текст — рассылка всем\n"
+        "/partner_on place_id — включить партнёрку\n"
+        "/partner_off place_id — выключить партнёрку",
+        parse_mode="HTML"
     )
+
+
+@dp.message(Command("stats"))
+async def admin_stats(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    await message.answer(format_admin_stats(), parse_mode="HTML")
+
+
+@dp.message(Command("users"))
+async def admin_users(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    await message.answer(
+        f"👥 Пользователей в базе: <b>{len(get_all_users())}</b>",
+        parse_mode="HTML"
+    )
+
+
+@dp.message(Command("partners"))
+async def admin_partners(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    partners = get_partner_places()
+    if not partners:
+        await message.answer("Партнёрских заведений пока нет.")
+        return
+
+    text = "🤝 <b>Партнёрские заведения:</b>\n\n"
+    for place in partners:
+        text += f"• {place['name']} — <code>{place['id']}</code>\n"
+
+    await message.answer(text, parse_mode="HTML")
+
+
+@dp.message(Command("promo"))
+async def admin_promo(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    await message.answer(random.choice(ADS), parse_mode="HTML")
 
 
 @dp.message(Command("send"))
 async def send_broadcast(message: Message):
-    if message.from_user.id != ADMIN_ID:
+    if not is_admin(message.from_user.id):
         return
 
     text = message.text.replace("/send", "", 1).strip()
@@ -1069,8 +1201,11 @@ async def send_broadcast(message: Message):
         await message.answer("Напиши текст после команды /send")
         return
 
+    users = get_all_users()
     success = 0
-    for user_id in get_all_users():
+    failed = 0
+
+    for user_id in users:
         try:
             await bot.send_message(
                 user_id,
@@ -1079,9 +1214,65 @@ async def send_broadcast(message: Message):
             )
             success += 1
         except Exception:
-            pass
+            failed += 1
 
-    await message.answer(f"✅ Отправлено: {success}")
+    await message.answer(
+        f"✅ Рассылка завершена\n\n"
+        f"Успешно: {success}\n"
+        f"Не доставлено: {failed}"
+    )
+
+
+@dp.message(Command("partner_on"))
+async def partner_on_handler(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer("Используй: /partner_on place_id")
+        return
+
+    place_id = args[1].strip()
+    place = find_place_by_id(place_id)
+
+    if not place:
+        await message.answer("Заведение с таким place_id не найдено.")
+        return
+
+    place["is_partner"] = True
+    set_partner_db(place_id, True)
+
+    await message.answer(
+        f"✅ Партнёрка включена для: <b>{place['name']}</b>",
+        parse_mode="HTML"
+    )
+
+
+@dp.message(Command("partner_off"))
+async def partner_off_handler(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    args = message.text.split(maxsplit=1)
+    if len(args) < 2:
+        await message.answer("Используй: /partner_off place_id")
+        return
+
+    place_id = args[1].strip()
+    place = find_place_by_id(place_id)
+
+    if not place:
+        await message.answer("Заведение с таким place_id не найдено.")
+        return
+
+    place["is_partner"] = False
+    set_partner_db(place_id, False)
+
+    await message.answer(
+        f"❌ Партнёрка выключена для: <b>{place['name']}</b>",
+        parse_mode="HTML"
+    )
 
 
 @dp.message(F.text == "ℹ️ Помощь")
@@ -1129,9 +1320,9 @@ async def random_budget_handler(message: Message):
     if not variants:
         await message.answer("Ничего не найдено.", reply_markup=get_back_keyboard())
         return
-    place = random.choice(variants)
+
     await message.answer("🎲 Дешёвый вариант:", reply_markup=get_back_keyboard())
-    await send_place_card(message, place)
+    await send_place_card(message, random.choice(variants))
 
 
 @dp.message(F.text == "🎲 Для свидания")
@@ -1140,9 +1331,9 @@ async def random_date_handler(message: Message):
     if not variants:
         await message.answer("Ничего не найдено.", reply_markup=get_back_keyboard())
         return
-    place = random.choice(variants)
+
     await message.answer("🎲 Вариант для свидания:", reply_markup=get_back_keyboard())
-    await send_place_card(message, place)
+    await send_place_card(message, random.choice(variants))
 
 
 @dp.message(F.text == "🎲 Ночное случайное")
@@ -1151,9 +1342,9 @@ async def random_night_handler(message: Message):
     if not variants:
         await message.answer("Ничего не найдено.", reply_markup=get_back_keyboard())
         return
-    place = random.choice(variants)
+
     await message.answer("🎲 Ночной вариант:", reply_markup=get_back_keyboard())
-    await send_place_card(message, place)
+    await send_place_card(message, random.choice(variants))
 
 
 @dp.message(F.text == "🎲 Быстрый перекус")
@@ -1169,9 +1360,8 @@ async def random_fast_handler(message: Message):
         await message.answer("Ничего не найдено.", reply_markup=get_back_keyboard())
         return
 
-    place = random.choice(fast)
     await message.answer("🎲 Быстрый перекус:", reply_markup=get_back_keyboard())
-    await send_place_card(message, place)
+    await send_place_card(message, random.choice(fast))
 
 
 async def send_top(message: Message, category: str, title: str):
@@ -1222,10 +1412,7 @@ async def smart_budget_handler(message: Message):
     SMART_STATE[user_id]["budget"] = message.text
     SMART_STATE[user_id]["step"] = "format"
 
-    await message.answer(
-        "С кем идёшь?",
-        reply_markup=get_format_keyboard()
-    )
+    await message.answer("С кем идёшь?", reply_markup=get_format_keyboard())
 
 
 @dp.message(F.text.in_(["👤 Один", "💑 Свидание", "👥 Компания"]))
@@ -1237,13 +1424,10 @@ async def smart_format_handler(message: Message):
     SMART_STATE[user_id]["format"] = message.text
     SMART_STATE[user_id]["step"] = "food"
 
-    await message.answer(
-        "Что хочется по еде?",
-        reply_markup=get_food_keyboard()
-    )
+    await message.answer("Что хочется по еде?", reply_markup=get_food_keyboard())
 
 
-@dp.message(F.text.in_(["🍽 Не важно"]))
+@dp.message(F.text == "🍽 Не важно")
 async def smart_food_any_handler(message: Message):
     user_id = message.from_user.id
     if user_id not in SMART_STATE or SMART_STATE[user_id].get("step") != "food":
@@ -1252,10 +1436,7 @@ async def smart_food_any_handler(message: Message):
     SMART_STATE[user_id]["food"] = message.text
     SMART_STATE[user_id]["step"] = "distance"
 
-    await message.answer(
-        "Как по расстоянию?",
-        reply_markup=get_distance_keyboard()
-    )
+    await message.answer("Как по расстоянию?", reply_markup=get_distance_keyboard())
 
 
 @dp.message(F.text.in_(PLACES.keys()))
@@ -1266,10 +1447,7 @@ async def category_or_smart_handler(message: Message):
         SMART_STATE[user_id]["food"] = message.text
         SMART_STATE[user_id]["step"] = "distance"
 
-        await message.answer(
-            "Как по расстоянию?",
-            reply_markup=get_distance_keyboard()
-        )
+        await message.answer("Как по расстоянию?", reply_markup=get_distance_keyboard())
         return
 
     category = message.text
@@ -1330,7 +1508,7 @@ async def fast_handler(message: Message):
 async def chill_handler(message: Message):
     result = []
     for place in all_places_list():
-        if "☕ Кофе" == place.get("food_type") or "🍺 Бары" == place.get("food_type"):
+        if place.get("food_type") in ["☕ Кофе", "🍺 Бары"]:
             result.append(place)
 
     result = sort_places_by_score(result)
@@ -1400,7 +1578,6 @@ async def favorites_handler(message: Message):
             found_places.append(place)
 
     found_places = sort_places_by_score(found_places)
-
     for place in found_places:
         await send_place_card(message, place)
 
@@ -1418,7 +1595,6 @@ async def add_to_favorites_handler(callback: CallbackQuery):
         return
 
     favorite_ids = get_favorites_db(user_id)
-
     if place_id in favorite_ids:
         await callback.answer("Уже в избранном ❤️")
         return
@@ -1444,7 +1620,6 @@ async def like_handler(callback: CallbackQuery):
         return
 
     set_vote_db(user_id, place_id, "like")
-
     await callback.message.edit_reply_markup(reply_markup=card_buttons(place))
     await callback.answer("Ты поставил 👍")
 
@@ -1466,7 +1641,6 @@ async def dislike_handler(callback: CallbackQuery):
         return
 
     set_vote_db(user_id, place_id, "dislike")
-
     await callback.message.edit_reply_markup(reply_markup=card_buttons(place))
     await callback.answer("Ты поставил 👎")
 
@@ -1494,6 +1668,7 @@ async def main():
     global BOT_USERNAME
 
     init_db()
+    apply_partner_flags_from_db()
 
     me = await bot.get_me()
     BOT_USERNAME = me.username
