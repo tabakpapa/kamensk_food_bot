@@ -2,191 +2,38 @@ import os
 import asyncio
 import random
 import sqlite3
-from collections import defaultdict
+from typing import Optional
 
 from aiogram import Bot, Dispatcher, F
-from aiogram.filters import CommandStart, Command
+from aiogram.filters import Command, CommandStart
 from aiogram.types import (
+    CallbackQuery,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    KeyboardButton,
     Message,
     ReplyKeyboardMarkup,
-    KeyboardButton,
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
-    CallbackQuery,
 )
 
 TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("Не задан BOT_TOKEN")
 
-ADMIN_ID = int(os.getenv("ADMIN_ID", 729024995))
-DB_PATH = "bot.db"
+ADMIN_ID = int(os.getenv("ADMIN_ID", "729024995"))
+DB_PATH = os.getenv("DB_PATH", "bot.db")
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-USERS = set()
-BOT_USERNAME = None
-SMART_STATE = {}
-SHOW_COUNTER = defaultdict(int)
+BOT_USERNAME: Optional[str] = None
+SMART_STATE: dict[int, dict] = {}
+USER_CONTEXT: dict[int, dict] = {}
 
 ADS = [
-    "📢 <b>Реклама</b>\n\nХочешь видеть своё заведение в рекомендациях бота? Напиши администратору.",
-    "📢 <b>Реклама</b>\n\nПартнёрские размещения, приоритет в подборках и промо-рассылки доступны для заведений.",
-    "📢 <b>Реклама</b>\n\nЭтот бот можно использовать как городской гид по еде. Для рекламы — пиши владельцу бота.",
+    "📢 <b>Реклама</b>\n\nХочешь продвинуть своё заведение в боте? Напиши администратору.",
+    "📢 <b>Реклама</b>\n\nПартнёрские места получают приоритет в подборках и отдельные промо-блоки.",
+    "📢 <b>Реклама</b>\n\nЭтот бот можно использовать как городской food-гид. Для размещения — свяжись с владельцем.",
 ]
-
-
-def get_connection():
-    return sqlite3.connect(DB_PATH)
-
-
-def init_db():
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-            user_id INTEGER PRIMARY KEY
-        )
-    """)
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS favorites (
-            user_id INTEGER,
-            place_id TEXT,
-            PRIMARY KEY (user_id, place_id)
-        )
-    """)
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS votes (
-            user_id INTEGER,
-            place_id TEXT,
-            vote TEXT,
-            PRIMARY KEY (user_id, place_id)
-        )
-    """)
-
-    cur.execute("""
-        CREATE TABLE IF NOT EXISTS partners (
-            place_id TEXT PRIMARY KEY,
-            is_partner INTEGER NOT NULL DEFAULT 0
-        )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-def save_user(user_id: int):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
-    conn.commit()
-    conn.close()
-
-
-def get_all_users():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT user_id FROM users")
-    rows = cur.fetchall()
-    conn.close()
-    return [row[0] for row in rows]
-
-
-def add_favorite_db(user_id: int, place_id: str):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "INSERT OR IGNORE INTO favorites (user_id, place_id) VALUES (?, ?)",
-        (user_id, place_id)
-    )
-    conn.commit()
-    conn.close()
-
-
-def get_favorites_db(user_id: int):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT place_id FROM favorites WHERE user_id = ?",
-        (user_id,)
-    )
-    rows = cur.fetchall()
-    conn.close()
-    return [row[0] for row in rows]
-
-
-def get_vote_db(user_id: int, place_id: str):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute(
-        "SELECT vote FROM votes WHERE user_id = ? AND place_id = ?",
-        (user_id, place_id)
-    )
-    row = cur.fetchone()
-    conn.close()
-    return row[0] if row else None
-
-
-def set_vote_db(user_id: int, place_id: str, vote: str):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO votes (user_id, place_id, vote)
-        VALUES (?, ?, ?)
-        ON CONFLICT(user_id, place_id) DO UPDATE SET vote=excluded.vote
-    """, (user_id, place_id, vote))
-    conn.commit()
-    conn.close()
-
-
-def count_votes_db(place_id: str):
-    conn = get_connection()
-    cur = conn.cursor()
-
-    cur.execute(
-        "SELECT COUNT(*) FROM votes WHERE place_id = ? AND vote = 'like'",
-        (place_id,)
-    )
-    up = cur.fetchone()[0]
-
-    cur.execute(
-        "SELECT COUNT(*) FROM votes WHERE place_id = ? AND vote = 'dislike'",
-        (place_id,)
-    )
-    down = cur.fetchone()[0]
-
-    conn.close()
-    return up, down
-
-
-def set_partner_db(place_id: str, is_partner: bool):
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("""
-        INSERT INTO partners (place_id, is_partner)
-        VALUES (?, ?)
-        ON CONFLICT(place_id) DO UPDATE SET is_partner=excluded.is_partner
-    """, (place_id, 1 if is_partner else 0))
-    conn.commit()
-    conn.close()
-
-
-def get_partners_map():
-    conn = get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT place_id, is_partner FROM partners")
-    rows = cur.fetchall()
-    conn.close()
-    return {place_id: bool(is_partner) for place_id, is_partner in rows}
-
-
-def is_admin(user_id: int) -> bool:
-    return user_id == ADMIN_ID
-
 
 PLACES = {
     "🍔 Бургеры": [
@@ -816,14 +663,215 @@ PLACES = {
     ],
 }
 
-NIGHT_PLACES = [
-    "Хрущёвка",
-    "Моджо",
-    "K1",
-    "Роял Рум",
-    "Генрих и Генриетта",
-    "Седьмое небо",
-]
+
+def get_connection():
+    return sqlite3.connect(DB_PATH)
+
+
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS favorites (
+            user_id INTEGER,
+            place_id TEXT,
+            PRIMARY KEY (user_id, place_id)
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS votes (
+            user_id INTEGER,
+            place_id TEXT,
+            vote TEXT,
+            PRIMARY KEY (user_id, place_id)
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS partners (
+            place_id TEXT PRIMARY KEY,
+            is_partner INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS analytics (
+            metric TEXT PRIMARY KEY,
+            value INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+
+def save_user(user_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
+    conn.commit()
+    conn.close()
+
+
+def get_all_users() -> list[int]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM users")
+    rows = cur.fetchall()
+    conn.close()
+    return [row[0] for row in rows]
+
+
+def add_favorite_db(user_id: int, place_id: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT OR IGNORE INTO favorites (user_id, place_id) VALUES (?, ?)",
+        (user_id, place_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_favorites_db(user_id: int) -> list[str]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT place_id FROM favorites WHERE user_id = ?", (user_id,))
+    rows = cur.fetchall()
+    conn.close()
+    return [row[0] for row in rows]
+
+
+def get_vote_db(user_id: int, place_id: str) -> Optional[str]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT vote FROM votes WHERE user_id = ? AND place_id = ?",
+        (user_id, place_id)
+    )
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+
+def set_vote_db(user_id: int, place_id: str, vote: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO votes (user_id, place_id, vote)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id, place_id) DO UPDATE SET vote = excluded.vote
+    """, (user_id, place_id, vote))
+    conn.commit()
+    conn.close()
+
+
+def count_votes_db(place_id: str) -> tuple[int, int]:
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT COUNT(*) FROM votes WHERE place_id = ? AND vote = 'like'",
+        (place_id,)
+    )
+    up = cur.fetchone()[0]
+
+    cur.execute(
+        "SELECT COUNT(*) FROM votes WHERE place_id = ? AND vote = 'dislike'",
+        (place_id,)
+    )
+    down = cur.fetchone()[0]
+
+    conn.close()
+    return up, down
+
+
+def set_partner_db(place_id: str, is_partner: bool):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO partners (place_id, is_partner)
+        VALUES (?, ?)
+        ON CONFLICT(place_id) DO UPDATE SET is_partner = excluded.is_partner
+    """, (place_id, 1 if is_partner else 0))
+    conn.commit()
+    conn.close()
+
+
+def get_partners_map() -> dict[str, bool]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT place_id, is_partner FROM partners")
+    rows = cur.fetchall()
+    conn.close()
+    return {place_id: bool(is_partner) for place_id, is_partner in rows}
+
+
+def inc_metric(name: str, value: int = 1):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO analytics (metric, value)
+        VALUES (?, ?)
+        ON CONFLICT(metric) DO UPDATE SET value = value + excluded.value
+    """, (name, value))
+    conn.commit()
+    conn.close()
+
+
+def get_metric(name: str) -> int:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT value FROM analytics WHERE metric = ?", (name,))
+    row = cur.fetchone()
+    conn.close()
+    return int(row[0]) if row else 0
+
+
+def get_metrics_map() -> dict[str, int]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT metric, value FROM analytics")
+    rows = cur.fetchall()
+    conn.close()
+    return {metric: int(value) for metric, value in rows}
+
+
+def all_places_list() -> list[dict]:
+    result = []
+    for items in PLACES.values():
+        result.extend(items)
+    return result
+
+
+def find_place_by_id(place_id: str) -> Optional[dict]:
+    for place in all_places_list():
+        if place["id"] == place_id:
+            return place
+    return None
+
+
+def find_place_by_name(name: str) -> Optional[dict]:
+    for place in all_places_list():
+        if place["name"] == name:
+            return place
+    return None
+
+
+def get_place_category(place_id: str) -> Optional[str]:
+    for category, items in PLACES.items():
+        for place in items:
+            if place["id"] == place_id:
+                return category
+    return None
 
 
 def apply_partner_flags_from_db():
@@ -833,41 +881,26 @@ def apply_partner_flags_from_db():
             place["is_partner"] = partners_map[place["id"]]
 
 
-def all_places_list():
-    result = []
-    for items in PLACES.values():
-        result.extend(items)
-    return result
+def is_admin(user_id: int) -> bool:
+    return user_id == ADMIN_ID
 
 
-def find_place_by_name(name: str):
+def track_place_view(place_id: str):
+    inc_metric(f"view_place:{place_id}")
+    category = get_place_category(place_id)
+    if category:
+        inc_metric(f"view_category:{category}")
+
+
+def get_place_views(place_id: str) -> int:
+    return get_metric(f"view_place:{place_id}")
+
+
+def get_total_views() -> int:
+    total = 0
     for place in all_places_list():
-        if place["name"] == name:
-            return place
-    return None
-
-
-def find_place_by_id(place_id: str):
-    for place in all_places_list():
-        if place["id"] == place_id:
-            return place
-    return None
-
-
-def get_partner_places():
-    return [place for place in all_places_list() if place.get("is_partner", False)]
-
-
-def get_total_votes():
-    total_likes = 0
-    total_dislikes = 0
-
-    for place in all_places_list():
-        up, down = count_votes_db(place["id"])
-        total_likes += up
-        total_dislikes += down
-
-    return total_likes, total_dislikes
+        total += get_place_views(place["id"])
+    return total
 
 
 def format_place(place: dict) -> str:
@@ -885,9 +918,9 @@ def format_place(place: dict) -> str:
 
 def popularity_score(place: dict) -> int:
     up, down = count_votes_db(place["id"])
-    shows = SHOW_COUNTER[place["id"]]
+    views = get_place_views(place["id"])
     partner_bonus = 3 if place.get("is_partner", False) else 0
-    return (up * 3) - (down * 2) + shows + partner_bonus
+    return (up * 3) - (down * 2) + views + partner_bonus
 
 
 def sort_places_by_score(places: list[dict]) -> list[dict]:
@@ -902,59 +935,26 @@ def sort_places_by_score(places: list[dict]) -> list[dict]:
     )
 
 
-def get_most_popular_places(limit: int = 5):
+def get_partner_places() -> list[dict]:
+    return [place for place in all_places_list() if place.get("is_partner", False)]
+
+
+def get_total_votes() -> tuple[int, int]:
+    total_likes = 0
+    total_dislikes = 0
+    for place in all_places_list():
+        up, down = count_votes_db(place["id"])
+        total_likes += up
+        total_dislikes += down
+    return total_likes, total_dislikes
+
+
+def get_most_popular_places(limit: int = 5) -> list[dict]:
     return sort_places_by_score(all_places_list())[:limit]
 
 
-def format_admin_stats() -> str:
-    users_count = len(get_all_users())
-    places_count = len(all_places_list())
-    partners_count = len(get_partner_places())
-    likes, dislikes = get_total_votes()
-    top_places = get_most_popular_places(5)
-
-    text = (
-        f"📊 <b>Статистика бота</b>\n\n"
-        f"👥 Пользователей: {users_count}\n"
-        f"📍 Всего заведений: {places_count}\n"
-        f"🤝 Партнёров: {partners_count}\n"
-        f"👍 Всего лайков: {likes}\n"
-        f"👎 Всего дизлайков: {dislikes}\n\n"
-        f"🔥 <b>Топ-5 популярных мест:</b>\n"
-    )
-
-    if not top_places:
-        text += "Пока нет данных."
-        return text
-
-    for i, place in enumerate(top_places, start=1):
-        up, down = count_votes_db(place["id"])
-        text += f"{i}. {place['name']} (👍 {up} / 👎 {down})\n"
-
-    return text
-
-
-def build_share_url():
-    if BOT_USERNAME:
-        return f"https://t.me/{BOT_USERNAME}"
-    return "https://t.me/"
-
-
-def card_buttons(place: dict) -> InlineKeyboardMarkup:
-    up, down = count_votes_db(place["id"])
-    share_url = f"https://t.me/share/url?url={build_share_url()}&text=Смотри, нашёл бота где можно выбрать место поесть в Каменске"
-
-    rows = [
-        [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])],
-        [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")],
-        [
-            InlineKeyboardButton(text=f"👍 {up}", callback_data=f"like:{place['id']}"),
-            InlineKeyboardButton(text=f"👎 {down}", callback_data=f"dislike:{place['id']}"),
-        ],
-        [InlineKeyboardButton(text="📤 Поделиться ботом", url=share_url)],
-    ]
-
-    return InlineKeyboardMarkup(inline_keyboard=rows)
+def build_share_url() -> str:
+    return f"https://t.me/{BOT_USERNAME}" if BOT_USERNAME else "https://t.me/"
 
 
 def get_main_keyboard():
@@ -964,8 +964,9 @@ def get_main_keyboard():
             [KeyboardButton(text="🍕 Пицца"), KeyboardButton(text="☕ Кофе")],
             [KeyboardButton(text="🍺 Бары"), KeyboardButton(text="⭐ Лучшие места")],
             [KeyboardButton(text="🌙 Где поесть ночью"), KeyboardButton(text="🎲 Случайное место")],
-            [KeyboardButton(text="🧠 Подобрать место")],
-            [KeyboardButton(text="🔥 Сейчас популярно"), KeyboardButton(text="🎯 Случайное по фильтру")],
+            [KeyboardButton(text="🧠 Подобрать место"), KeyboardButton(text="🔥 Сейчас популярно")],
+            [KeyboardButton(text="💑 Топ для свидания"), KeyboardButton(text="💸 Топ до 500")],
+            [KeyboardButton(text="👥 Топ для компании"), KeyboardButton(text="🎯 Случайное по фильтру")],
             [KeyboardButton(text="🏆 Топ по категориям"), KeyboardButton(text="❤️ Моё избранное")],
             [KeyboardButton(text="ℹ️ Помощь")],
         ],
@@ -987,20 +988,7 @@ def get_top_keyboard():
 
 def get_back_keyboard():
     return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="⬅️ Назад")]
-        ],
-        resize_keyboard=True
-    )
-
-
-def get_smart_keyboard():
-    return ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="💸 Дёшево"), KeyboardButton(text="⚡ Быстро")],
-            [KeyboardButton(text="☕ Посидеть"), KeyboardButton(text="🌙 Ночью")],
-            [KeyboardButton(text="⬅️ Назад")],
-        ],
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
         resize_keyboard=True
     )
 
@@ -1060,8 +1048,35 @@ def get_random_filter_keyboard():
     )
 
 
+def get_more_keyboard(cursor_key: str):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="➕ Ещё 5 мест", callback_data=f"more:{cursor_key}")]
+        ]
+    )
+
+
+def card_buttons(place: dict) -> InlineKeyboardMarkup:
+    up, down = count_votes_db(place["id"])
+    share_url = (
+        f"https://t.me/share/url?url={build_share_url()}"
+        f"&text=Смотри, нашёл бота где можно выбрать место поесть в Каменске"
+    )
+
+    rows = [
+        [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])],
+        [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")],
+        [
+            InlineKeyboardButton(text=f"👍 {up}", callback_data=f"like:{place['id']}"),
+            InlineKeyboardButton(text=f"👎 {down}", callback_data=f"dislike:{place['id']}"),
+        ],
+        [InlineKeyboardButton(text="📤 Поделиться ботом", url=share_url)],
+    ]
+    return InlineKeyboardMarkup(inline_keyboard=rows)
+
+
 async def send_place_card(message: Message, place: dict):
-    SHOW_COUNTER[place["id"]] += 1
+    track_place_view(place["id"])
     await message.answer(
         format_place(place),
         parse_mode="HTML",
@@ -1073,7 +1088,7 @@ async def send_ad_block(message: Message):
     await message.answer(random.choice(ADS), parse_mode="HTML")
 
 
-async def send_places_with_ad(message: Message, places: list[dict], title: str | None = None, limit: int = 5):
+async def send_places_with_ad(message: Message, places: list[dict], title: Optional[str] = None, limit: int = 5):
     if title:
         await message.answer(title, reply_markup=get_back_keyboard())
 
@@ -1081,46 +1096,102 @@ async def send_places_with_ad(message: Message, places: list[dict], title: str |
         await message.answer("Пока ничего не найдено.", reply_markup=get_back_keyboard())
         return
 
+    key = f"user_{message.from_user.id}"
+    USER_CONTEXT[key] = {"places": places, "offset": 0}
+
     for place in places[:limit]:
         await send_place_card(message, place)
+
+    USER_CONTEXT[key]["offset"] = limit
+
+    if len(places) > limit:
+        await message.answer(
+            "Показал первые места. Нажми, чтобы увидеть ещё:",
+            reply_markup=get_more_keyboard(key)
+        )
 
     await send_ad_block(message)
 
 
 def smart_filter_places(
-    budget: str | None = None,
-    fmt: str | None = None,
-    food: str | None = None,
-    distance: str | None = None,
+    budget: Optional[str] = None,
+    fmt: Optional[str] = None,
+    food: Optional[str] = None,
+    distance: Optional[str] = None,
     night_only: bool = False,
 ) -> list[dict]:
     result = []
-
     for place in all_places_list():
         if budget and budget != "💎 Не важно" and place.get("budget") != budget:
             continue
-
         if fmt and fmt not in place.get("formats", []):
             continue
-
         if food and food != "🍽 Не важно" and place.get("food_type") != food:
             continue
-
         if distance == "🚶 Рядом" and place.get("distance") != "🚶 Рядом":
             continue
-
         if night_only and not place.get("night", False):
             continue
-
         result.append(place)
-
     return sort_places_by_score(result)
+
+
+def format_admin_stats() -> str:
+    metrics = get_metrics_map()
+    users_count = len(get_all_users())
+    places_count = len(all_places_list())
+    partners_count = len(get_partner_places())
+    likes, dislikes = get_total_votes()
+    views = get_total_views()
+    top_places = get_most_popular_places(5)
+
+    lines = [
+        "📊 <b>Статистика бота</b>",
+        "",
+        f"👥 Пользователей: {users_count}",
+        f"📍 Всего заведений: {places_count}",
+        f"🤝 Партнёров: {partners_count}",
+        f"👀 Просмотров карточек: {views}",
+        f"👍 Всего лайков: {likes}",
+        f"👎 Всего дизлайков: {dislikes}",
+        "",
+        "📈 <b>Активность:</b>",
+        f"▶️ /start: {metrics.get('start_used', 0)}",
+        f"🧠 Подбор: {metrics.get('smart_used', 0)}",
+        f"🎲 Случайное место: {metrics.get('random_used', 0)}",
+        f"❤️ Избранное: {metrics.get('favorites_used', 0)}",
+        f"🔥 Популярное: {metrics.get('popular_used', 0)}",
+        f"🌙 Ночные подборки: {metrics.get('night_used', 0)}",
+        f"💑 Топ для свидания: {metrics.get('top_date_used', 0)}",
+        f"💸 Топ до 500: {metrics.get('top_budget_used', 0)}",
+        f"👥 Топ для компании: {metrics.get('top_company_used', 0)}",
+        "",
+        "📂 <b>Категории:</b>",
+        f"🍔 Бургеры: {metrics.get('view_category:🍔 Бургеры', 0)}",
+        f"🌯 Шаурма: {metrics.get('view_category:🌯 Шаурма', 0)}",
+        f"🍕 Пицца: {metrics.get('view_category:🍕 Пицца', 0)}",
+        f"☕ Кофе: {metrics.get('view_category:☕ Кофе', 0)}",
+        f"🍺 Бары: {metrics.get('view_category:🍺 Бары', 0)}",
+        "",
+        "🔥 <b>Топ-5 популярных мест:</b>",
+    ]
+
+    if not top_places:
+        lines.append("Пока нет данных.")
+    else:
+        for i, place in enumerate(top_places, start=1):
+            up, down = count_votes_db(place["id"])
+            lines.append(
+                f"{i}. {place['name']} (👍 {up} / 👎 {down} / 👀 {get_place_views(place['id'])})"
+            )
+
+    return "\n".join(lines)
 
 
 @dp.message(CommandStart())
 async def start_handler(message: Message):
-    USERS.add(message.from_user.id)
     save_user(message.from_user.id)
+    inc_metric("start_used")
     await message.answer(
         "🍴 Где поесть в Каменске\n\nВыбери категорию или умный подбор:",
         reply_markup=get_main_keyboard()
@@ -1141,8 +1212,8 @@ async def admin_panel(message: Message):
         "/partners — список партнёров\n"
         "/promo — тест рекламного блока\n"
         "/send текст — рассылка всем\n"
-        "/partner_on place_id — включить партнёрку\n"
-        "/partner_off place_id — выключить партнёрку",
+        "/partner_on place_id — включить партнёра\n"
+        "/partner_off place_id — выключить партнёра",
         parse_mode="HTML"
     )
 
@@ -1151,7 +1222,6 @@ async def admin_panel(message: Message):
 async def admin_stats(message: Message):
     if not is_admin(message.from_user.id):
         return
-
     await message.answer(format_admin_stats(), parse_mode="HTML")
 
 
@@ -1159,7 +1229,6 @@ async def admin_stats(message: Message):
 async def admin_users(message: Message):
     if not is_admin(message.from_user.id):
         return
-
     await message.answer(
         f"👥 Пользователей в базе: <b>{len(get_all_users())}</b>",
         parse_mode="HTML"
@@ -1187,7 +1256,6 @@ async def admin_partners(message: Message):
 async def admin_promo(message: Message):
     if not is_admin(message.from_user.id):
         return
-
     await message.answer(random.choice(ADS), parse_mode="HTML")
 
 
@@ -1228,23 +1296,21 @@ async def partner_on_handler(message: Message):
     if not is_admin(message.from_user.id):
         return
 
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
         await message.answer("Используй: /partner_on place_id")
         return
 
-    place_id = args[1].strip()
+    place_id = parts[1].strip()
     place = find_place_by_id(place_id)
-
     if not place:
         await message.answer("Заведение с таким place_id не найдено.")
         return
 
     place["is_partner"] = True
     set_partner_db(place_id, True)
-
     await message.answer(
-        f"✅ Партнёрка включена для: <b>{place['name']}</b>",
+        f"✅ Партнёр включён: <b>{place['name']}</b>",
         parse_mode="HTML"
     )
 
@@ -1254,23 +1320,21 @@ async def partner_off_handler(message: Message):
     if not is_admin(message.from_user.id):
         return
 
-    args = message.text.split(maxsplit=1)
-    if len(args) < 2:
+    parts = message.text.split(maxsplit=1)
+    if len(parts) < 2:
         await message.answer("Используй: /partner_off place_id")
         return
 
-    place_id = args[1].strip()
+    place_id = parts[1].strip()
     place = find_place_by_id(place_id)
-
     if not place:
         await message.answer("Заведение с таким place_id не найдено.")
         return
 
     place["is_partner"] = False
     set_partner_db(place_id, False)
-
     await message.answer(
-        f"❌ Партнёрка выключена для: <b>{place['name']}</b>",
+        f"❌ Партнёр выключен: <b>{place['name']}</b>",
         parse_mode="HTML"
     )
 
@@ -1300,10 +1364,93 @@ async def top_menu_handler(message: Message):
     await message.answer("🏆 Выбери категорию:", reply_markup=get_top_keyboard())
 
 
+@dp.message(F.text == "🍔 Топ бургеры")
+async def top_burgers(message: Message):
+    await send_places_with_ad(
+        message,
+        sort_places_by_score(PLACES["🍔 Бургеры"]),
+        "🍔 Лучшие бургеры:"
+    )
+
+
+@dp.message(F.text == "🌯 Топ шаурма")
+async def top_shaurma(message: Message):
+    await send_places_with_ad(
+        message,
+        sort_places_by_score(PLACES["🌯 Шаурма"]),
+        "🌯 Лучшая шаурма:"
+    )
+
+
+@dp.message(F.text == "🍕 Топ пицца")
+async def top_pizza(message: Message):
+    await send_places_with_ad(
+        message,
+        sort_places_by_score(PLACES["🍕 Пицца"]),
+        "🍕 Лучшая пицца:"
+    )
+
+
+@dp.message(F.text == "☕ Топ кофе")
+async def top_coffee(message: Message):
+    await send_places_with_ad(
+        message,
+        sort_places_by_score(PLACES["☕ Кофе"]),
+        "☕ Лучший кофе:"
+    )
+
+
+@dp.message(F.text == "🍺 Топ бары")
+async def top_bars(message: Message):
+    await send_places_with_ad(
+        message,
+        sort_places_by_score(PLACES["🍺 Бары"]),
+        "🍺 Лучшие бары:"
+    )
+
+
 @dp.message(F.text == "🔥 Сейчас популярно")
 async def popular_handler(message: Message):
-    places = sort_places_by_score(all_places_list())[:8]
-    await send_places_with_ad(message, places, "🔥 Сейчас популярно в боте:", limit=8)
+    inc_metric("popular_used")
+    await send_places_with_ad(
+        message,
+        get_most_popular_places(20),
+        "🔥 Сейчас популярно в боте:",
+        limit=5
+    )
+
+
+@dp.message(F.text == "💑 Топ для свидания")
+async def top_for_date_handler(message: Message):
+    inc_metric("top_date_used")
+    await send_places_with_ad(
+        message,
+        smart_filter_places(fmt="💑 Свидание"),
+        "💑 Лучшие места для свидания:",
+        limit=5
+    )
+
+
+@dp.message(F.text == "💸 Топ до 500")
+async def top_under_500_handler(message: Message):
+    inc_metric("top_budget_used")
+    await send_places_with_ad(
+        message,
+        smart_filter_places(budget="💸 До 500"),
+        "💸 Лучшие места до 500:",
+        limit=5
+    )
+
+
+@dp.message(F.text == "👥 Топ для компании")
+async def top_for_company_handler(message: Message):
+    inc_metric("top_company_used")
+    await send_places_with_ad(
+        message,
+        smart_filter_places(fmt="👥 Компания"),
+        "👥 Лучшие места для компании:",
+        limit=5
+    )
 
 
 @dp.message(F.text == "🎯 Случайное по фильтру")
@@ -1320,7 +1467,6 @@ async def random_budget_handler(message: Message):
     if not variants:
         await message.answer("Ничего не найдено.", reply_markup=get_back_keyboard())
         return
-
     await message.answer("🎲 Дешёвый вариант:", reply_markup=get_back_keyboard())
     await send_place_card(message, random.choice(variants))
 
@@ -1331,7 +1477,6 @@ async def random_date_handler(message: Message):
     if not variants:
         await message.answer("Ничего не найдено.", reply_markup=get_back_keyboard())
         return
-
     await message.answer("🎲 Вариант для свидания:", reply_markup=get_back_keyboard())
     await send_place_card(message, random.choice(variants))
 
@@ -1342,7 +1487,6 @@ async def random_night_handler(message: Message):
     if not variants:
         await message.answer("Ничего не найдено.", reply_markup=get_back_keyboard())
         return
-
     await message.answer("🎲 Ночной вариант:", reply_markup=get_back_keyboard())
     await send_place_card(message, random.choice(variants))
 
@@ -1364,38 +1508,9 @@ async def random_fast_handler(message: Message):
     await send_place_card(message, random.choice(fast))
 
 
-async def send_top(message: Message, category: str, title: str):
-    places = sort_places_by_score(PLACES.get(category, []))[:5]
-    await send_places_with_ad(message, places, title, limit=5)
-
-
-@dp.message(F.text == "🍔 Топ бургеры")
-async def top_burgers(message: Message):
-    await send_top(message, "🍔 Бургеры", "🍔 Лучшие бургеры:")
-
-
-@dp.message(F.text == "🌯 Топ шаурма")
-async def top_shaurma(message: Message):
-    await send_top(message, "🌯 Шаурма", "🌯 Лучшая шаурма:")
-
-
-@dp.message(F.text == "🍕 Топ пицца")
-async def top_pizza(message: Message):
-    await send_top(message, "🍕 Пицца", "🍕 Лучшая пицца:")
-
-
-@dp.message(F.text == "☕ Топ кофе")
-async def top_coffee(message: Message):
-    await send_top(message, "☕ Кофе", "☕ Лучший кофе:")
-
-
-@dp.message(F.text == "🍺 Топ бары")
-async def top_bars(message: Message):
-    await send_top(message, "🍺 Бары", "🍺 Лучшие бары:")
-
-
 @dp.message(F.text == "🧠 Подобрать место")
 async def smart_menu_handler(message: Message):
+    inc_metric("smart_used")
     SMART_STATE[message.from_user.id] = {"step": "budget"}
     await message.answer(
         "🧠 Подберём место.\n\nСколько хочешь потратить?",
@@ -1405,78 +1520,71 @@ async def smart_menu_handler(message: Message):
 
 @dp.message(F.text.in_(["💸 До 500", "💰 До 1000", "💎 Не важно"]))
 async def smart_budget_handler(message: Message):
-    user_id = message.from_user.id
-    if user_id not in SMART_STATE or SMART_STATE[user_id].get("step") != "budget":
+    state = SMART_STATE.get(message.from_user.id)
+    if not state or state.get("step") != "budget":
         return
 
-    SMART_STATE[user_id]["budget"] = message.text
-    SMART_STATE[user_id]["step"] = "format"
-
+    state["budget"] = message.text
+    state["step"] = "format"
     await message.answer("С кем идёшь?", reply_markup=get_format_keyboard())
 
 
 @dp.message(F.text.in_(["👤 Один", "💑 Свидание", "👥 Компания"]))
 async def smart_format_handler(message: Message):
-    user_id = message.from_user.id
-    if user_id not in SMART_STATE or SMART_STATE[user_id].get("step") != "format":
+    state = SMART_STATE.get(message.from_user.id)
+    if not state or state.get("step") != "format":
         return
 
-    SMART_STATE[user_id]["format"] = message.text
-    SMART_STATE[user_id]["step"] = "food"
-
+    state["format"] = message.text
+    state["step"] = "food"
     await message.answer("Что хочется по еде?", reply_markup=get_food_keyboard())
 
 
 @dp.message(F.text == "🍽 Не важно")
 async def smart_food_any_handler(message: Message):
-    user_id = message.from_user.id
-    if user_id not in SMART_STATE or SMART_STATE[user_id].get("step") != "food":
+    state = SMART_STATE.get(message.from_user.id)
+    if not state or state.get("step") != "food":
         return
 
-    SMART_STATE[user_id]["food"] = message.text
-    SMART_STATE[user_id]["step"] = "distance"
-
+    state["food"] = message.text
+    state["step"] = "distance"
     await message.answer("Как по расстоянию?", reply_markup=get_distance_keyboard())
 
 
 @dp.message(F.text.in_(PLACES.keys()))
 async def category_or_smart_handler(message: Message):
-    user_id = message.from_user.id
+    state = SMART_STATE.get(message.from_user.id)
 
-    if user_id in SMART_STATE and SMART_STATE[user_id].get("step") == "food":
-        SMART_STATE[user_id]["food"] = message.text
-        SMART_STATE[user_id]["step"] = "distance"
-
+    if state and state.get("step") == "food":
+        state["food"] = message.text
+        state["step"] = "distance"
         await message.answer("Как по расстоянию?", reply_markup=get_distance_keyboard())
         return
 
     category = message.text
-    sorted_places = sort_places_by_score(PLACES[category])
+    inc_metric(f"open_category:{category}")
     await send_places_with_ad(
         message,
-        sorted_places,
+        sort_places_by_score(PLACES[category]),
         f"{category} в Каменске-Уральском:",
-        limit=10
+        limit=5
     )
 
 
 @dp.message(F.text.in_(["🚶 Рядом", "🚕 Не важно"]))
 async def smart_distance_handler(message: Message):
-    user_id = message.from_user.id
-    if user_id not in SMART_STATE or SMART_STATE[user_id].get("step") != "distance":
+    state = SMART_STATE.get(message.from_user.id)
+    if not state or state.get("step") != "distance":
         return
 
-    data = SMART_STATE[user_id]
-    data["distance"] = message.text
-
+    state["distance"] = message.text
     result = smart_filter_places(
-        budget=data.get("budget"),
-        fmt=data.get("format"),
-        food=data.get("food"),
-        distance=data.get("distance"),
+        budget=state.get("budget"),
+        fmt=state.get("format"),
+        food=state.get("food"),
+        distance=state.get("distance"),
     )
-
-    SMART_STATE.pop(user_id, None)
+    SMART_STATE.pop(message.from_user.id, None)
 
     await send_places_with_ad(
         message,
@@ -1486,10 +1594,67 @@ async def smart_distance_handler(message: Message):
     )
 
 
+@dp.message(F.text == "⭐ Лучшие места")
+async def top_handler(message: Message):
+    await send_places_with_ad(
+        message,
+        sort_places_by_score(all_places_list())[:20],
+        "⭐ Топ заведений по мнению пользователей:",
+        limit=5
+    )
+
+
+@dp.message(F.text == "🌙 Где поесть ночью")
+async def night_handler(message: Message):
+    inc_metric("night_used")
+    await send_places_with_ad(
+        message,
+        smart_filter_places(night_only=True),
+        "🌙 Где поесть ночью:",
+        limit=5
+    )
+
+
+@dp.message(F.text == "🎲 Случайное место")
+async def random_handler(message: Message):
+    inc_metric("random_used")
+    place = random.choice(all_places_list())
+    await message.answer("🎲 Сегодня попробуй:", reply_markup=get_back_keyboard())
+    await send_place_card(message, place)
+
+
+@dp.message(F.text == "❤️ Моё избранное")
+async def favorites_handler(message: Message):
+    save_user(message.from_user.id)
+    inc_metric("favorites_used")
+
+    favorite_ids = get_favorites_db(message.from_user.id)
+    if not favorite_ids:
+        await message.answer("У тебя пока нет избранных мест.", reply_markup=get_back_keyboard())
+        return
+
+    places = []
+    for place_id in favorite_ids:
+        place = find_place_by_id(place_id)
+        if place:
+            places.append(place)
+
+    await send_places_with_ad(
+        message,
+        sort_places_by_score(places),
+        "❤️ Твоё избранное:",
+        limit=5
+    )
+
+
 @dp.message(F.text == "💸 Дёшево")
 async def cheap_handler(message: Message):
-    result = smart_filter_places(budget="💸 До 500")
-    await send_places_with_ad(message, result, "💸 Недорогие варианты:", limit=5)
+    await send_places_with_ad(
+        message,
+        smart_filter_places(budget="💸 До 500"),
+        "💸 Недорогие варианты:",
+        limit=5
+    )
 
 
 @dp.message(F.text == "⚡ Быстро")
@@ -1500,93 +1665,28 @@ async def fast_handler(message: Message):
         if any(word in text for word in ["шаурма", "бургер", "стритфуд", "фастфуд", "перекус"]):
             result.append(place)
 
-    result = sort_places_by_score(result)
-    await send_places_with_ad(message, result, "⚡ Быстрый перекус:", limit=5)
+    await send_places_with_ad(
+        message,
+        sort_places_by_score(result),
+        "⚡ Быстрый перекус:",
+        limit=5
+    )
 
 
 @dp.message(F.text == "☕ Посидеть")
 async def chill_handler(message: Message):
-    result = []
-    for place in all_places_list():
-        if place.get("food_type") in ["☕ Кофе", "🍺 Бары"]:
-            result.append(place)
-
-    result = sort_places_by_score(result)
-    await send_places_with_ad(message, result, "☕ Где можно посидеть:", limit=6)
-
-
-@dp.message(F.text == "🌙 Ночью")
-async def night_smart_handler(message: Message):
-    result = smart_filter_places(night_only=True)
-    await send_places_with_ad(message, result, "🌙 Где поесть ночью:", limit=6)
-
-
-@dp.message(F.text == "⭐ Лучшие места")
-async def top_handler(message: Message):
-    top_places = sort_places_by_score(all_places_list())[:10]
+    result = [p for p in all_places_list() if p.get("food_type") in ["☕ Кофе", "🍺 Бары"]]
     await send_places_with_ad(
         message,
-        top_places,
-        "⭐ Топ заведений по мнению пользователей:",
-        limit=10
+        sort_places_by_score(result),
+        "☕ Где можно посидеть:",
+        limit=5
     )
-
-
-@dp.message(F.text == "🌙 Где поесть ночью")
-async def night_handler(message: Message):
-    result = []
-    for name in NIGHT_PLACES:
-        place = find_place_by_name(name)
-        if place:
-            result.append(place)
-
-    result = sort_places_by_score(result)
-    await send_places_with_ad(
-        message,
-        result,
-        "🌙 Места, которые часто работают допоздна:",
-        limit=6
-    )
-
-
-@dp.message(F.text == "🎲 Случайное место")
-async def random_handler(message: Message):
-    place = random.choice(all_places_list())
-    await message.answer("🎲 Сегодня попробуй:", reply_markup=get_back_keyboard())
-    await send_place_card(message, place)
-
-
-@dp.message(F.text == "❤️ Моё избранное")
-async def favorites_handler(message: Message):
-    user_id = message.from_user.id
-    save_user(user_id)
-
-    favorite_ids = get_favorites_db(user_id)
-    if not favorite_ids:
-        await message.answer(
-            "У тебя пока нет избранных мест.",
-            reply_markup=get_back_keyboard()
-        )
-        return
-
-    await message.answer("❤️ Твоё избранное:", reply_markup=get_back_keyboard())
-
-    found_places = []
-    for place_id in favorite_ids:
-        place = find_place_by_id(place_id)
-        if place:
-            found_places.append(place)
-
-    found_places = sort_places_by_score(found_places)
-    for place in found_places:
-        await send_place_card(message, place)
 
 
 @dp.callback_query(F.data.startswith("fav:"))
 async def add_to_favorites_handler(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    save_user(user_id)
-
+    save_user(callback.from_user.id)
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
 
@@ -1594,55 +1694,81 @@ async def add_to_favorites_handler(callback: CallbackQuery):
         await callback.answer("Место не найдено", show_alert=True)
         return
 
-    favorite_ids = get_favorites_db(user_id)
+    favorite_ids = get_favorites_db(callback.from_user.id)
     if place_id in favorite_ids:
         await callback.answer("Уже в избранном ❤️")
         return
 
-    add_favorite_db(user_id, place_id)
+    add_favorite_db(callback.from_user.id, place_id)
     await callback.answer("Добавлено в избранное ❤️")
 
 
 @dp.callback_query(F.data.startswith("like:"))
 async def like_handler(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    save_user(user_id)
-
+    save_user(callback.from_user.id)
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
+
     if not place:
         await callback.answer("Место не найдено", show_alert=True)
         return
 
-    current_vote = get_vote_db(user_id, place_id)
-    if current_vote == "like":
+    if get_vote_db(callback.from_user.id, place_id) == "like":
         await callback.answer("Ты уже поставил 👍")
         return
 
-    set_vote_db(user_id, place_id, "like")
+    set_vote_db(callback.from_user.id, place_id, "like")
     await callback.message.edit_reply_markup(reply_markup=card_buttons(place))
     await callback.answer("Ты поставил 👍")
 
 
 @dp.callback_query(F.data.startswith("dislike:"))
 async def dislike_handler(callback: CallbackQuery):
-    user_id = callback.from_user.id
-    save_user(user_id)
-
+    save_user(callback.from_user.id)
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
+
     if not place:
         await callback.answer("Место не найдено", show_alert=True)
         return
 
-    current_vote = get_vote_db(user_id, place_id)
-    if current_vote == "dislike":
+    if get_vote_db(callback.from_user.id, place_id) == "dislike":
         await callback.answer("Ты уже поставил 👎")
         return
 
-    set_vote_db(user_id, place_id, "dislike")
+    set_vote_db(callback.from_user.id, place_id, "dislike")
     await callback.message.edit_reply_markup(reply_markup=card_buttons(place))
     await callback.answer("Ты поставил 👎")
+
+
+@dp.callback_query(F.data.startswith("more:"))
+async def more_places_handler(callback: CallbackQuery):
+    key = callback.data.split(":", 1)[1]
+    context = USER_CONTEXT.get(key)
+
+    if not context:
+        await callback.answer("Больше мест нет")
+        return
+
+    places = context["places"]
+    offset = context["offset"]
+    next_chunk = places[offset: offset + 5]
+
+    if not next_chunk:
+        await callback.answer("Это были все места")
+        return
+
+    for place in next_chunk:
+        await send_place_card(callback.message, place)
+
+    context["offset"] = offset + 5
+
+    if context["offset"] < len(places):
+        await callback.message.answer("Показать ещё?", reply_markup=get_more_keyboard(key))
+    else:
+        await callback.message.answer("✅ Это все найденные места.")
+
+    await callback.answer()
 
 
 @dp.message(F.text == "⬅️ Назад")
@@ -1656,7 +1782,6 @@ async def back_handler(message: Message):
 
 @dp.message()
 async def fallback_handler(message: Message):
-    USERS.add(message.from_user.id)
     save_user(message.from_user.id)
     await message.answer(
         "Нажми /start и выбери кнопку из меню.",
@@ -1675,9 +1800,6 @@ async def main():
 
     print(f"BOT STARTED: @{me.username}", flush=True)
     await bot.delete_webhook(drop_pending_updates=True)
-    print("WEBHOOK CLEARED", flush=True)
-    print("POLLING", flush=True)
-
     await dp.start_polling(bot)
 
 
