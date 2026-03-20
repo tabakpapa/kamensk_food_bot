@@ -2,6 +2,7 @@ import os
 import asyncio
 import random
 import sqlite3
+
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
@@ -18,19 +19,18 @@ TOKEN = os.getenv("BOT_TOKEN")
 if not TOKEN:
     raise ValueError("Не задан BOT_TOKEN")
 
-# Замени на свой Telegram user ID
 ADMIN_ID = int(os.getenv("ADMIN_ID", 729024995))
+DB_PATH = "bot.db"
 
 bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
-FAVORITES = {}
-RATINGS = {}
-USER_VOTES = {}
-DB_PATH = "bot.db"
+USERS = set()
+
 
 def get_connection():
     return sqlite3.connect(DB_PATH)
+
 
 def init_db():
     conn = get_connection()
@@ -62,12 +62,14 @@ def init_db():
     conn.commit()
     conn.close()
 
+
 def save_user(user_id: int):
     conn = get_connection()
     cur = conn.cursor()
     cur.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
     conn.commit()
     conn.close()
+
 
 def get_all_users():
     conn = get_connection()
@@ -76,6 +78,7 @@ def get_all_users():
     rows = cur.fetchall()
     conn.close()
     return [row[0] for row in rows]
+
 
 def add_favorite_db(user_id: int, place_id: str):
     conn = get_connection()
@@ -86,6 +89,7 @@ def add_favorite_db(user_id: int, place_id: str):
     )
     conn.commit()
     conn.close()
+
 
 def get_favorites_db(user_id: int):
     conn = get_connection()
@@ -98,6 +102,7 @@ def get_favorites_db(user_id: int):
     conn.close()
     return [row[0] for row in rows]
 
+
 def get_vote_db(user_id: int, place_id: str):
     conn = get_connection()
     cur = conn.cursor()
@@ -109,6 +114,7 @@ def get_vote_db(user_id: int, place_id: str):
     conn.close()
     return row[0] if row else None
 
+
 def set_vote_db(user_id: int, place_id: str, vote: str):
     conn = get_connection()
     cur = conn.cursor()
@@ -119,6 +125,7 @@ def set_vote_db(user_id: int, place_id: str, vote: str):
     """, (user_id, place_id, vote))
     conn.commit()
     conn.close()
+
 
 def count_votes_db(place_id: str):
     conn = get_connection()
@@ -138,7 +145,7 @@ def count_votes_db(place_id: str):
 
     conn.close()
     return up, down
-USERS = set()
+
 
 PLACES = {
     "🍔 Бургеры": [
@@ -150,6 +157,8 @@ PLACES = {
             "rating": "4.6",
             "desc": "Сетевые бургеры, комбо и напитки.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Бургер Кинг проспект Победы 65",
+            "photo": "https://1000logos.net/wp-content/uploads/2017/03/Burger-King-Logo.png",
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Бургер Кинг проспект Победы 65",
             "is_partner": False,
         },
         {
@@ -160,6 +169,8 @@ PLACES = {
             "rating": "4.2",
             "desc": "Курица, бургеры, баскеты и комбо.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Rostic's Суворова 24",
+            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Rostics_logo.svg/512px-Rostics_logo.svg.png",
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Rostic's Суворова 24",
             "is_partner": False,
         },
         {
@@ -170,6 +181,8 @@ PLACES = {
             "rating": "4.9",
             "desc": "Стритфуд, мясо и блюда на гриле.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шампурико Алюминиевая 77Б",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/gallery/firm/70000001097374790",
             "is_partner": False,
         },
         {
@@ -180,6 +193,8 @@ PLACES = {
             "rating": "4.7",
             "desc": "Стритфуд, бургеры, шаурма и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
+            "photo": None,
+            "photo_page": "https://nebo-7.ru/",
             "is_partner": False,
         },
         {
@@ -190,6 +205,8 @@ PLACES = {
             "rating": "4.2",
             "desc": "Сэндвичи, бургеры и быстрый перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Subjoy",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Subjoy",
             "is_partner": False,
         },
         {
@@ -200,6 +217,8 @@ PLACES = {
             "rating": "4.4",
             "desc": "Фастфуд и закуски.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Русская забава",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Русская забава",
             "is_partner": False,
         },
     ],
@@ -212,6 +231,8 @@ PLACES = {
             "rating": "4.6",
             "desc": "Классическая шаурма и напитки.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма Маркет Ленина 13А",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/org/shaurma_market/75638569554/gallery/",
             "is_partner": False,
         },
         {
@@ -222,6 +243,8 @@ PLACES = {
             "rating": "4.5",
             "desc": "Шаверма, хот-доги и быстрые закуски.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Лаваш Алюминиевая 78",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Лаваш Алюминиевая 78",
             "is_partner": False,
         },
         {
@@ -232,6 +255,8 @@ PLACES = {
             "rating": "4.3",
             "desc": "Шаурма и мясо на гриле.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Мясной Батя проспект Победы 75Б",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Мясной Батя проспект Победы 75Б",
             "is_partner": False,
         },
         {
@@ -242,6 +267,8 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Шаурма и быстрый перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский По шаурме проспект Победы 19",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский По шаурме проспект Победы 19",
             "is_partner": False,
         },
         {
@@ -252,6 +279,8 @@ PLACES = {
             "rating": "4.6",
             "desc": "Точка с классической шаурмой.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма Каменская 82Б",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001039954042",
             "is_partner": False,
         },
         {
@@ -262,6 +291,8 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Восточная шаурма и закуски.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма восточная Бугарева 3",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма восточная Бугарева 3",
             "is_partner": False,
         },
         {
@@ -272,6 +303,8 @@ PLACES = {
             "rating": "4.7",
             "desc": "Шаурма, мясо и блюда на мангале.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Мангал",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Мангал",
             "is_partner": False,
         },
         {
@@ -282,6 +315,8 @@ PLACES = {
             "rating": "4.7",
             "desc": "Шаурма, бургеры и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
+            "photo": None,
+            "photo_page": "https://nebo-7.ru/",
             "is_partner": False,
         },
         {
@@ -292,6 +327,8 @@ PLACES = {
             "rating": "4.9",
             "desc": "Шаурма и блюда на гриле.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шампурико Алюминиевая 77Б",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/gallery/firm/70000001097374790",
             "is_partner": False,
         },
     ],
@@ -304,6 +341,8 @@ PLACES = {
             "rating": "4.7",
             "desc": "Пицца, закуски, десерты и доставка.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца Каменская 91",
+            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Dodo_Pizza_logo.svg/512px-Dodo_Pizza_logo.svg.png",
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца Каменская 91",
             "is_partner": False,
         },
         {
@@ -314,6 +353,8 @@ PLACES = {
             "rating": "4.8",
             "desc": "Ещё одна точка Додо Пиццы.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца проспект Победы 44",
+            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Dodo_Pizza_logo.svg/512px-Dodo_Pizza_logo.svg.png",
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца проспект Победы 44",
             "is_partner": False,
         },
         {
@@ -324,6 +365,8 @@ PLACES = {
             "rating": "4.5",
             "desc": "Пицца и быстрые обеды.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia Суворова 18",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia Суворова 18",
             "is_partner": False,
         },
         {
@@ -334,6 +377,8 @@ PLACES = {
             "rating": "4.2",
             "desc": "Пицца, закуски и семейный формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia проспект Победы 51А",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia проспект Победы 51А",
             "is_partner": False,
         },
         {
@@ -344,6 +389,8 @@ PLACES = {
             "rating": "4.9",
             "desc": "Пицца и итальянское меню.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца Суворова 23А",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца Суворова 23А",
             "is_partner": False,
         },
         {
@@ -354,6 +401,8 @@ PLACES = {
             "rating": "4.9",
             "desc": "Ещё одна точка Италиан Пиццы.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца проспект Победы 44",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца проспект Победы 44",
             "is_partner": False,
         },
         {
@@ -364,6 +413,8 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Пицца и быстрый перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizzatime Каменская 12",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Pizzatime Каменская 12",
             "is_partner": False,
         },
         {
@@ -374,6 +425,8 @@ PLACES = {
             "rating": "4.5",
             "desc": "Пицца, роллы и доставка.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Sushkof i Pizza",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Sushkof i Pizza",
             "is_partner": False,
         },
         {
@@ -384,6 +437,8 @@ PLACES = {
             "rating": "4.3",
             "desc": "Пицца, горячие блюда и кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Большие тарелки",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/search/%D0%91%D0%BE%D0%BB%D1%8C%D1%88%D0%B8%D0%B5%20%D1%82%D0%B0%D1%80%D0%B5%D0%BB%D0%BA%D0%B8",
             "is_partner": False,
         },
         {
@@ -394,6 +449,8 @@ PLACES = {
             "rating": "4.7",
             "desc": "Стритфуд, шаурма и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
+            "photo": None,
+            "photo_page": "https://nebo-7.ru/",
             "is_partner": False,
         },
     ],
@@ -406,6 +463,8 @@ PLACES = {
             "rating": "5.0",
             "desc": "Кофе, десерты и спокойная кофейня.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Dozacoffee Алюминиевая 45",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001088171495",
             "is_partner": False,
         },
         {
@@ -416,6 +475,8 @@ PLACES = {
             "rating": "4.5",
             "desc": "Кофе с собой и десерты.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Черный лис проспект Победы 6",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001036235498",
             "is_partner": False,
         },
         {
@@ -426,6 +487,8 @@ PLACES = {
             "rating": "4.5",
             "desc": "Ещё одна точка кофейни Черный лис.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Черный лис Алюминиевая 68",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001090689760",
             "is_partner": False,
         },
         {
@@ -436,6 +499,8 @@ PLACES = {
             "rating": "5.0",
             "desc": "Кофе, выпечка и перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Coffee Print проспект Победы 65",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001055315793",
             "is_partner": False,
         },
         {
@@ -446,6 +511,8 @@ PLACES = {
             "rating": "4.4",
             "desc": "Кофейня и десерты.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский По любви Алюминиевая 37",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001065981951",
             "is_partner": False,
         },
         {
@@ -456,6 +523,8 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Кофе с собой.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Это твой кофе Суворова 24",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Это твой кофе Суворова 24",
             "is_partner": False,
         },
         {
@@ -466,6 +535,8 @@ PLACES = {
             "rating": "4.5",
             "desc": "Напитки, десерты и кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Bubble Cafe",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001096874801",
             "is_partner": False,
         },
         {
@@ -476,6 +547,8 @@ PLACES = {
             "rating": "4.4",
             "desc": "Кафе и кофейные напитки.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Avokado Gold",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/search/Avokado%20Gold",
             "is_partner": False,
         },
         {
@@ -486,6 +559,8 @@ PLACES = {
             "rating": "4.4",
             "desc": "Кофе и спокойное место.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский На Берегу Набережная 9",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский На Берегу Набережная 9",
             "is_partner": False,
         },
     ],
@@ -498,6 +573,8 @@ PLACES = {
             "rating": "4.9",
             "desc": "Бар для вечерних встреч.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Хрущёвка Каменская 12",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/gallery/firm/70000001036731602",
             "is_partner": False,
         },
         {
@@ -508,6 +585,8 @@ PLACES = {
             "rating": "4.5",
             "desc": "Бар с вечерней атмосферой.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Моджо",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001006952161",
             "is_partner": False,
         },
         {
@@ -518,6 +597,8 @@ PLACES = {
             "rating": "4.6",
             "desc": "Бар и место для вечернего отдыха.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский K1",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский K1",
             "is_partner": False,
         },
         {
@@ -528,6 +609,8 @@ PLACES = {
             "rating": "4.4",
             "desc": "Бар / паб-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Генрих и Генриетта",
+            "photo": None,
+            "photo_page": "https://2gis.ru/k_uralskiy/gallery/firm/70000001006952917",
             "is_partner": False,
         },
         {
@@ -538,6 +621,8 @@ PLACES = {
             "rating": "4.3",
             "desc": "Бар и вечерний отдых.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шахта",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Шахта",
             "is_partner": False,
         },
         {
@@ -548,6 +633,8 @@ PLACES = {
             "rating": "4.0",
             "desc": "Бар и клубный формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Роял Рум",
+            "photo": None,
+            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Роял Рум",
             "is_partner": False,
         },
         {
@@ -558,6 +645,8 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Бар / кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо бар",
+            "photo": None,
+            "photo_page": "https://nebo-7.ru/",
             "is_partner": False,
         },
     ],
@@ -624,9 +713,10 @@ def get_smart_keyboard():
 def get_place_score(place_id: str):
     return count_votes_db(place_id)
 
+
 def get_place_rating_score(place: dict) -> int:
-    data = RATINGS.get(place["id"], {"up": 0, "down": 0})
-    return data["up"] - data["down"]
+    up, down = count_votes_db(place["id"])
+    return up - down
 
 
 def sort_places_by_score(places: list[dict]) -> list[dict]:
@@ -635,7 +725,7 @@ def sort_places_by_score(places: list[dict]) -> list[dict]:
         key=lambda p: (
             p.get("is_partner", False),
             get_place_rating_score(p),
-            RATINGS.get(p["id"], {"up": 0})["up"]
+            count_votes_db(p["id"])[0]
         ),
         reverse=True
     )
@@ -644,16 +734,27 @@ def sort_places_by_score(places: list[dict]) -> list[dict]:
 def card_buttons(place: dict) -> InlineKeyboardMarkup:
     up, down = get_place_score(place["id"])
 
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])],
-            [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")],
-            [
-                InlineKeyboardButton(text=f"👍 {up}", callback_data=f"like:{place['id']}"),
-                InlineKeyboardButton(text=f"👎 {down}", callback_data=f"dislike:{place['id']}"),
-            ],
+    buttons = [
+        [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])]
+    ]
+
+    if place.get("photo_page"):
+        buttons.append(
+            [InlineKeyboardButton(text="🖼 Фото заведения", url=place["photo_page"])]
+        )
+
+    buttons.append(
+        [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")]
+    )
+
+    buttons.append(
+        [
+            InlineKeyboardButton(text=f"👍 {up}", callback_data=f"like:{place['id']}"),
+            InlineKeyboardButton(text=f"👎 {down}", callback_data=f"dislike:{place['id']}"),
         ]
     )
+
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def all_places_list():
@@ -689,6 +790,28 @@ def format_place(place: dict) -> str:
     )
 
 
+async def send_place_card(message: Message, place: dict):
+    text = format_place(place)
+
+    if place.get("photo"):
+        try:
+            await message.answer_photo(
+                photo=place["photo"],
+                caption=text,
+                parse_mode="HTML",
+                reply_markup=card_buttons(place),
+            )
+            return
+        except Exception:
+            pass
+
+    await message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=card_buttons(place),
+    )
+
+
 @dp.message(CommandStart())
 async def start_handler(message: Message):
     USERS.add(message.from_user.id)
@@ -704,18 +827,18 @@ async def admin_panel(message: Message):
     if message.from_user.id != ADMIN_ID:
         return
 
+    users = get_all_users()
+
     await message.answer(
         f"👑 Админ-панель\n\n"
-        f"👥 Пользователей: {len(USERS)}\n"
-        f"❤️ Избранных списков: {len(FAVORITES)}\n"
-        f"🗳 Голосований: {len(USER_VOTES)}\n\n"
+        f"👥 Пользователей в базе: {len(users)}\n\n"
         f"Для рассылки:\n"
         f"/send Твой текст рекламы"
     )
 
 
 @dp.message(Command("send"))
-async def admin_send(message: Message):
+async def send_broadcast(message: Message):
     if message.from_user.id != ADMIN_ID:
         return
 
@@ -724,15 +847,21 @@ async def admin_send(message: Message):
         await message.answer("Напиши текст после команды /send")
         return
 
-    count = 0
-    for user_id in USERS:
-        try:
-            await bot.send_message(user_id, f"📢 <b>Реклама</b>\n\n{text}", parse_mode="HTML")
-            count += 1
-        except Exception:
-            continue
+    users = get_all_users()
+    success = 0
 
-    await message.answer(f"✅ Реклама отправлена: {count}")
+    for user_id in users:
+        try:
+            await bot.send_message(
+                user_id,
+                f"📢 <b>Реклама</b>\n\n{text}",
+                parse_mode="HTML"
+            )
+            success += 1
+        except Exception:
+            pass
+
+    await message.answer(f"✅ Отправлено: {success}")
 
 
 @dp.message(F.text == "ℹ️ Помощь")
@@ -742,6 +871,7 @@ async def help_handler(message: Message):
         "Что умеет бот:\n\n"
         "• показывает заведения по категориям\n"
         "• открывает заведения в Яндекс Картах\n"
+        "• открывает страницы с фото заведений\n"
         "• показывает лучшие места\n"
         "• показывает места, где можно поесть ночью\n"
         "• выбирает случайное место\n"
@@ -773,11 +903,7 @@ async def send_top(message: Message, category: str, title: str):
         return
 
     for place in places:
-        await message.answer(
-            format_place(place),
-            parse_mode="HTML",
-            reply_markup=card_buttons(place),
-        )
+        await send_place_card(message, place)
 
 
 @dp.message(F.text == "🍔 Топ бургеры")
@@ -819,7 +945,7 @@ async def cheap_handler(message: Message):
 
     result = []
     for place in all_places_list():
-        text = place["name"].lower() + " " + place["desc"].lower()
+        text = (place["name"] + " " + place["desc"]).lower()
         if any(word in text for word in cheap_keywords):
             result.append(place)
 
@@ -832,11 +958,7 @@ async def cheap_handler(message: Message):
         return
 
     for place in result:
-        await message.answer(
-            format_place(place),
-            parse_mode="HTML",
-            reply_markup=card_buttons(place),
-        )
+        await send_place_card(message, place)
 
 
 @dp.message(F.text == "⚡ Быстро")
@@ -856,11 +978,7 @@ async def fast_handler(message: Message):
         return
 
     for place in result:
-        await message.answer(
-            format_place(place),
-            parse_mode="HTML",
-            reply_markup=card_buttons(place),
-        )
+        await send_place_card(message, place)
 
 
 @dp.message(F.text == "☕ Посидеть")
@@ -875,11 +993,7 @@ async def chill_handler(message: Message):
         return
 
     for place in result:
-        await message.answer(
-            format_place(place),
-            parse_mode="HTML",
-            reply_markup=card_buttons(place),
-        )
+        await send_place_card(message, place)
 
 
 @dp.message(F.text == "🌙 Ночью")
@@ -900,11 +1014,7 @@ async def night_smart_handler(message: Message):
         return
 
     for place in result:
-        await message.answer(
-            format_place(place),
-            parse_mode="HTML",
-            reply_markup=card_buttons(place),
-        )
+        await send_place_card(message, place)
 
 
 @dp.message(F.text.in_(PLACES.keys()))
@@ -918,11 +1028,7 @@ async def category_handler(message: Message):
     )
 
     for place in sorted_places:
-        await message.answer(
-            format_place(place),
-            parse_mode="HTML",
-            reply_markup=card_buttons(place),
-        )
+        await send_place_card(message, place)
 
 
 @dp.message(F.text == "⭐ Лучшие места")
@@ -940,11 +1046,7 @@ async def top_handler(message: Message):
         return
 
     for place in top_places:
-        await message.answer(
-            format_place(place),
-            parse_mode="HTML",
-            reply_markup=card_buttons(place),
-        )
+        await send_place_card(message, place)
 
 
 @dp.message(F.text == "🌙 Где поесть ночью")
@@ -957,11 +1059,7 @@ async def night_handler(message: Message):
     for name in NIGHT_PLACES:
         place = find_place_by_name(name)
         if place:
-            await message.answer(
-                format_place(place),
-                parse_mode="HTML",
-                reply_markup=card_buttons(place),
-            )
+            await send_place_card(message, place)
 
 
 @dp.message(F.text == "🎲 Случайное место")
@@ -971,11 +1069,7 @@ async def random_handler(message: Message):
         "🎲 Сегодня попробуй:",
         reply_markup=get_back_keyboard()
     )
-    await message.answer(
-        format_place(place),
-        parse_mode="HTML",
-        reply_markup=card_buttons(place),
-    )
+    await send_place_card(message, place)
 
 
 @dp.message(F.text == "❤️ Моё избранное")
@@ -1000,34 +1094,8 @@ async def favorites_handler(message: Message):
     for place_id in favorite_ids:
         place = find_place_by_id(place_id)
         if place:
-            await message.answer(
-                format_place(place),
-                parse_mode="HTML",
-                reply_markup=card_buttons(place),
-            )
+            await send_place_card(message, place)
 
-from aiogram.filters import Command
-
-ADMIN_ID = 729024995  # ← ВСТАВЬ СВОЙ ID (не @, а число!)
-
-@dp.message(Command("send"))
-async def send_broadcast(message: Message):
-    if message.from_user.id != ADMIN_ID:
-        return
-
-    text = message.text.replace("/send ", "", 1)
-
-    users = get_all_users()
-    success = 0
-
-    for user_id in users:
-        try:
-            await bot.send_message(user_id, text)
-            success += 1
-        except:
-            pass
-
-    await message.answer(f"✅ Отправлено: {success}")
 
 @dp.callback_query(F.data.startswith("fav:"))
 async def add_to_favorites_handler(callback: CallbackQuery):
