@@ -28,6 +28,7 @@ dp = Dispatcher()
 BOT_USERNAME: Optional[str] = None
 SMART_STATE: dict[int, dict] = {}
 USER_CONTEXT: dict[int, dict] = {}
+ORDER_STATE: dict[int, dict] = {}
 
 ADS = [
     "📢 <b>Реклама</b>\n\nХочешь продвинуть своё заведение в боте? Напиши администратору.",
@@ -709,6 +710,23 @@ def init_db():
         )
     """)
 
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            place_id TEXT,
+            place_name TEXT,
+            customer_name TEXT,
+            phone TEXT,
+            mode TEXT,
+            address TEXT,
+            items TEXT,
+            comment TEXT,
+            status TEXT DEFAULT 'new',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     conn.commit()
     conn.close()
 
@@ -845,6 +863,44 @@ def get_metrics_map() -> dict[str, int]:
     return {metric: int(value) for metric, value in rows}
 
 
+def save_order_db(data: dict):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO orders (
+            user_id, place_id, place_name, customer_name, phone,
+            mode, address, items, comment, status
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
+    """, (
+        data["user_id"],
+        data["place_id"],
+        data["place_name"],
+        data["customer_name"],
+        data["phone"],
+        data["mode"],
+        data.get("address", "Самовывоз"),
+        data["items"],
+        data["comment"],
+    ))
+    conn.commit()
+    conn.close()
+
+
+def get_recent_orders(limit: int = 10) -> list[tuple]:
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT id, place_name, customer_name, phone, status, created_at
+        FROM orders
+        ORDER BY id DESC
+        LIMIT ?
+    """, (limit,))
+    rows = cur.fetchall()
+    conn.close()
+    return rows
+
+
 def all_places_list() -> list[dict]:
     result = []
     for items in PLACES.values():
@@ -855,13 +911,6 @@ def all_places_list() -> list[dict]:
 def find_place_by_id(place_id: str) -> Optional[dict]:
     for place in all_places_list():
         if place["id"] == place_id:
-            return place
-    return None
-
-
-def find_place_by_name(name: str) -> Optional[dict]:
-    for place in all_places_list():
-        if place["name"] == name:
             return place
     return None
 
@@ -905,14 +954,30 @@ def get_total_views() -> int:
 
 def format_place(place: dict) -> str:
     partner_mark = "🔥 <b>Рекомендуем</b>\n" if place.get("is_partner", False) else ""
+    order_mark = "🛒 Доступен заказ через бота\n" if place.get("is_partner", False) else ""
     return (
         f"{partner_mark}"
+        f"{order_mark}"
         f"<b>{place['name']}</b>\n"
         f"📍 {place['address']}\n"
         f"⏰ {place['hours']}\n"
         f"⭐ {place['rating']}\n"
         f"💸 {place.get('budget', 'Нет данных')}\n"
         f"📝 {place['desc']}"
+    )
+
+
+def format_order_request(data: dict) -> str:
+    return (
+        "🛒 <b>Новая заявка</b>\n\n"
+        f"🏠 Заведение: {data['place_name']}\n"
+        f"👤 Имя: {data['customer_name']}\n"
+        f"📞 Телефон: {data['phone']}\n"
+        f"📦 Формат: {data['mode']}\n"
+        f"📍 Адрес: {data.get('address', 'Самовывоз')}\n"
+        f"🍴 Заказ: {data['items']}\n"
+        f"📝 Комментарий: {data['comment']}\n"
+        f"🆔 User ID: {data['user_id']}"
     )
 
 
@@ -1048,6 +1113,25 @@ def get_random_filter_keyboard():
     )
 
 
+def get_order_mode_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🚚 Доставка"), KeyboardButton(text="🏃 Самовывоз")],
+            [KeyboardButton(text="❌ Отменить заказ")],
+        ],
+        resize_keyboard=True
+    )
+
+
+def get_cancel_order_keyboard():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="❌ Отменить заказ")]
+        ],
+        resize_keyboard=True
+    )
+
+
 def get_more_keyboard(cursor_key: str):
     return InlineKeyboardMarkup(
         inline_keyboard=[
@@ -1065,13 +1149,22 @@ def card_buttons(place: dict) -> InlineKeyboardMarkup:
 
     rows = [
         [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])],
+    ]
+
+    if place.get("is_partner", False):
+        rows.append(
+            [InlineKeyboardButton(text="🛒 Оставить заказ", callback_data=f"order:{place['id']}")]
+        )
+
+    rows.extend([
         [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")],
         [
             InlineKeyboardButton(text=f"👍 {up}", callback_data=f"like:{place['id']}"),
             InlineKeyboardButton(text=f"👎 {down}", callback_data=f"dislike:{place['id']}"),
         ],
         [InlineKeyboardButton(text="📤 Поделиться ботом", url=share_url)],
-    ]
+    ])
+
     return InlineKeyboardMarkup(inline_keyboard=rows)
 
 
@@ -1144,6 +1237,7 @@ def format_admin_stats() -> str:
     likes, dislikes = get_total_votes()
     views = get_total_views()
     top_places = get_most_popular_places(5)
+    orders_count = len(get_recent_orders(1000))
 
     lines = [
         "📊 <b>Статистика бота</b>",
@@ -1152,6 +1246,7 @@ def format_admin_stats() -> str:
         f"📍 Всего заведений: {places_count}",
         f"🤝 Партнёров: {partners_count}",
         f"👀 Просмотров карточек: {views}",
+        f"🛒 Заявок: {orders_count}",
         f"👍 Всего лайков: {likes}",
         f"👎 Всего дизлайков: {dislikes}",
         "",
@@ -1165,6 +1260,8 @@ def format_admin_stats() -> str:
         f"💑 Топ для свидания: {metrics.get('top_date_used', 0)}",
         f"💸 Топ до 500: {metrics.get('top_budget_used', 0)}",
         f"👥 Топ для компании: {metrics.get('top_company_used', 0)}",
+        f"🛒 Начатые заказы: {metrics.get('order_started', 0)}",
+        f"✅ Отправленные заказы: {metrics.get('order_sent', 0)}",
         "",
         "📂 <b>Категории:</b>",
         f"🍔 Бургеры: {metrics.get('view_category:🍔 Бургеры', 0)}",
@@ -1211,6 +1308,7 @@ async def admin_panel(message: Message):
         "/users — число пользователей\n"
         "/partners — список партнёров\n"
         "/promo — тест рекламного блока\n"
+        "/orders — последние заявки\n"
         "/send текст — рассылка всем\n"
         "/partner_on place_id — включить партнёра\n"
         "/partner_off place_id — выключить партнёра",
@@ -1257,6 +1355,29 @@ async def admin_promo(message: Message):
     if not is_admin(message.from_user.id):
         return
     await message.answer(random.choice(ADS), parse_mode="HTML")
+
+
+@dp.message(Command("orders"))
+async def admin_orders(message: Message):
+    if not is_admin(message.from_user.id):
+        return
+
+    orders = get_recent_orders(10)
+    if not orders:
+        await message.answer("Заявок пока нет.")
+        return
+
+    text = "🛒 <b>Последние заявки:</b>\n\n"
+    for order_id, place_name, customer_name, phone, status, created_at in orders:
+        text += (
+            f"#{order_id} | {place_name}\n"
+            f"👤 {customer_name}\n"
+            f"📞 {phone}\n"
+            f"📌 {status}\n"
+            f"🕒 {created_at}\n\n"
+        )
+
+    await message.answer(text, parse_mode="HTML")
 
 
 @dp.message(Command("send"))
@@ -1351,7 +1472,8 @@ async def help_handler(message: Message):
         "• показывает ночные варианты\n"
         "• умеет сохранять в избранное\n"
         "• считает лайки и дизлайки\n"
-        "• позволяет делиться ботом\n\n"
+        "• позволяет делиться ботом\n"
+        "• у партнёров можно оставить заявку на заказ\n\n"
         "Команды:\n"
         "/start — открыть меню\n"
         "/help — помощь",
@@ -1684,6 +1806,38 @@ async def chill_handler(message: Message):
     )
 
 
+@dp.callback_query(F.data.startswith("order:"))
+async def start_order_handler(callback: CallbackQuery):
+    place_id = callback.data.split(":", 1)[1]
+    place = find_place_by_id(place_id)
+
+    if not place:
+        await callback.answer("Заведение не найдено", show_alert=True)
+        return
+
+    if not place.get("is_partner", False):
+        await callback.answer("Заказ доступен только у партнёров", show_alert=True)
+        return
+
+    ORDER_STATE[callback.from_user.id] = {
+        "step": "items",
+        "place_id": place["id"],
+        "place_name": place["name"],
+        "user_id": callback.from_user.id,
+    }
+
+    inc_metric("order_started")
+
+    await callback.message.answer(
+        f"🛒 Заказ в <b>{place['name']}</b>\n\n"
+        "Напиши, что хочешь заказать.\n"
+        "Например: 2 шаурмы, картошка, кола",
+        parse_mode="HTML",
+        reply_markup=get_cancel_order_keyboard()
+    )
+    await callback.answer()
+
+
 @dp.callback_query(F.data.startswith("fav:"))
 async def add_to_favorites_handler(callback: CallbackQuery):
     save_user(callback.from_user.id)
@@ -1771,9 +1925,17 @@ async def more_places_handler(callback: CallbackQuery):
     await callback.answer()
 
 
+@dp.message(F.text == "❌ Отменить заказ")
+async def cancel_order_handler(message: Message):
+    if message.from_user.id in ORDER_STATE:
+        ORDER_STATE.pop(message.from_user.id, None)
+        await message.answer("❌ Заказ отменён.", reply_markup=get_main_keyboard())
+
+
 @dp.message(F.text == "⬅️ Назад")
 async def back_handler(message: Message):
     SMART_STATE.pop(message.from_user.id, None)
+    ORDER_STATE.pop(message.from_user.id, None)
     await message.answer(
         "🍴 Снова главное меню\n\nВыбери категорию:",
         reply_markup=get_main_keyboard()
@@ -1781,6 +1943,101 @@ async def back_handler(message: Message):
 
 
 @dp.message()
+async def order_flow_handler(message: Message):
+    state = ORDER_STATE.get(message.from_user.id)
+    if not state:
+        await fallback_handler(message)
+        return
+
+    step = state.get("step")
+
+    if step == "items":
+        state["items"] = message.text.strip()
+        state["step"] = "name"
+        await message.answer(
+            "👤 Напиши своё имя:",
+            reply_markup=get_cancel_order_keyboard()
+        )
+        return
+
+    if step == "name":
+        state["customer_name"] = message.text.strip()
+        state["step"] = "phone"
+        await message.answer(
+            "📞 Напиши телефон для связи:",
+            reply_markup=get_cancel_order_keyboard()
+        )
+        return
+
+    if step == "phone":
+        state["phone"] = message.text.strip()
+        state["step"] = "mode"
+        await message.answer(
+            "📦 Выбери способ получения:",
+            reply_markup=get_order_mode_keyboard()
+        )
+        return
+
+    if step == "mode":
+        if message.text not in ["🚚 Доставка", "🏃 Самовывоз"]:
+            await message.answer("Выбери один из вариантов: доставка или самовывоз.")
+            return
+
+        state["mode"] = message.text
+
+        if message.text == "🚚 Доставка":
+            state["step"] = "address"
+            await message.answer(
+                "📍 Напиши адрес доставки:",
+                reply_markup=get_cancel_order_keyboard()
+            )
+        else:
+            state["address"] = "Самовывоз"
+            state["step"] = "comment"
+            await message.answer(
+                "📝 Напиши комментарий к заказу или отправь '-' если без комментария:",
+                reply_markup=get_cancel_order_keyboard()
+            )
+        return
+
+    if step == "address":
+        state["address"] = message.text.strip()
+        state["step"] = "comment"
+        await message.answer(
+            "📝 Напиши комментарий к заказу или отправь '-' если без комментария:",
+            reply_markup=get_cancel_order_keyboard()
+        )
+        return
+
+    if step == "comment":
+        state["comment"] = message.text.strip()
+
+        try:
+            save_order_db(state)
+            await bot.send_message(
+                ADMIN_ID,
+                format_order_request(state),
+                parse_mode="HTML"
+            )
+        except Exception:
+            await message.answer(
+                "⚠️ Не удалось отправить заявку. Попробуй позже.",
+                reply_markup=get_main_keyboard()
+            )
+            ORDER_STATE.pop(message.from_user.id, None)
+            return
+
+        inc_metric("order_sent")
+
+        await message.answer(
+            "✅ Заявка отправлена.\n\nС тобой скоро свяжутся для подтверждения заказа.",
+            reply_markup=get_main_keyboard()
+        )
+
+        ORDER_STATE.pop(message.from_user.id, None)
+        return
+
+
 async def fallback_handler(message: Message):
     save_user(message.from_user.id)
     await message.answer(
