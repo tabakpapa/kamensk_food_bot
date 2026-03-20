@@ -12,6 +12,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
     CallbackQuery,
+    FSInputFile,
 )
 
 TOKEN = os.getenv("BOT_TOKEN")
@@ -147,6 +148,10 @@ def count_votes_db(place_id: str):
     return up, down
 
 
+def place_photo_path(place_id: str) -> str:
+    return os.path.join("photos", f"{place_id}.jpg")
+
+
 PLACES = {
     "🍔 Бургеры": [
         {
@@ -157,8 +162,7 @@ PLACES = {
             "rating": "4.6",
             "desc": "Сетевые бургеры, комбо и напитки.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Бургер Кинг проспект Победы 65",
-            "photo": "https://1000logos.net/wp-content/uploads/2017/03/Burger-King-Logo.png",
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Бургер Кинг проспект Победы 65",
+            "photo": place_photo_path("burger_1"),
             "is_partner": False,
         },
         {
@@ -169,8 +173,7 @@ PLACES = {
             "rating": "4.2",
             "desc": "Курица, бургеры, баскеты и комбо.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Rostic's Суворова 24",
-            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/Rostics_logo.svg/512px-Rostics_logo.svg.png",
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Rostic's Суворова 24",
+            "photo": place_photo_path("burger_2"),
             "is_partner": False,
         },
         {
@@ -181,8 +184,7 @@ PLACES = {
             "rating": "4.9",
             "desc": "Стритфуд, мясо и блюда на гриле.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шампурико Алюминиевая 77Б",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/gallery/firm/70000001097374790",
+            "photo": place_photo_path("burger_3"),
             "is_partner": False,
         },
         {
@@ -193,8 +195,7 @@ PLACES = {
             "rating": "4.7",
             "desc": "Стритфуд, бургеры, шаурма и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
-            "photo": None,
-            "photo_page": "https://nebo-7.ru/",
+            "photo": place_photo_path("burger_4"),
             "is_partner": False,
         },
         {
@@ -205,8 +206,7 @@ PLACES = {
             "rating": "4.2",
             "desc": "Сэндвичи, бургеры и быстрый перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Subjoy",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Subjoy",
+            "photo": place_photo_path("burger_5"),
             "is_partner": False,
         },
         {
@@ -217,8 +217,7 @@ PLACES = {
             "rating": "4.4",
             "desc": "Фастфуд и закуски.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Русская забава",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Русская забава",
+            "photo": place_photo_path("burger_6"),
             "is_partner": False,
         },
     ],
@@ -231,8 +230,7 @@ PLACES = {
             "rating": "4.6",
             "desc": "Классическая шаурма и напитки.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма Маркет Ленина 13А",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/org/shaurma_market/75638569554/gallery/",
+            "photo": place_photo_path("shawarma_1"),
             "is_partner": False,
         },
         {
@@ -243,8 +241,7 @@ PLACES = {
             "rating": "4.5",
             "desc": "Шаверма, хот-доги и быстрые закуски.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Лаваш Алюминиевая 78",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Лаваш Алюминиевая 78",
+            "photo": place_photo_path("shawarma_2"),
             "is_partner": False,
         },
         {
@@ -255,8 +252,7 @@ PLACES = {
             "rating": "4.3",
             "desc": "Шаурма и мясо на гриле.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Мясной Батя проспект Победы 75Б",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Мясной Батя проспект Победы 75Б",
+            "photo": place_photo_path("shawarma_3"),
             "is_partner": False,
         },
         {
@@ -267,8 +263,7 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Шаурма и быстрый перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский По шаурме проспект Победы 19",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский По шаурме проспект Победы 19",
+            "photo": place_photo_path("shawarma_4"),
             "is_partner": False,
         },
         {
@@ -279,8 +274,7 @@ PLACES = {
             "rating": "4.6",
             "desc": "Точка с классической шаурмой.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма Каменская 82Б",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001039954042",
+            "photo": place_photo_path("shawarma_5"),
             "is_partner": False,
         },
         {
@@ -291,8 +285,7 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Восточная шаурма и закуски.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма восточная Бугарева 3",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма восточная Бугарева 3",
+            "photo": place_photo_path("shawarma_6"),
             "is_partner": False,
         },
         {
@@ -303,8 +296,7 @@ PLACES = {
             "rating": "4.7",
             "desc": "Шаурма, мясо и блюда на мангале.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Мангал",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Мангал",
+            "photo": place_photo_path("shawarma_7"),
             "is_partner": False,
         },
         {
@@ -315,8 +307,7 @@ PLACES = {
             "rating": "4.7",
             "desc": "Шаурма, бургеры и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
-            "photo": None,
-            "photo_page": "https://nebo-7.ru/",
+            "photo": place_photo_path("shawarma_8"),
             "is_partner": False,
         },
         {
@@ -327,8 +318,7 @@ PLACES = {
             "rating": "4.9",
             "desc": "Шаурма и блюда на гриле.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шампурико Алюминиевая 77Б",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/gallery/firm/70000001097374790",
+            "photo": place_photo_path("shawarma_9"),
             "is_partner": False,
         },
     ],
@@ -341,8 +331,7 @@ PLACES = {
             "rating": "4.7",
             "desc": "Пицца, закуски, десерты и доставка.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца Каменская 91",
-            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Dodo_Pizza_logo.svg/512px-Dodo_Pizza_logo.svg.png",
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца Каменская 91",
+            "photo": place_photo_path("pizza_1"),
             "is_partner": False,
         },
         {
@@ -353,8 +342,7 @@ PLACES = {
             "rating": "4.8",
             "desc": "Ещё одна точка Додо Пиццы.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца проспект Победы 44",
-            "photo": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/Dodo_Pizza_logo.svg/512px-Dodo_Pizza_logo.svg.png",
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца проспект Победы 44",
+            "photo": place_photo_path("pizza_2"),
             "is_partner": False,
         },
         {
@@ -365,8 +353,7 @@ PLACES = {
             "rating": "4.5",
             "desc": "Пицца и быстрые обеды.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia Суворова 18",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia Суворова 18",
+            "photo": place_photo_path("pizza_3"),
             "is_partner": False,
         },
         {
@@ -377,8 +364,7 @@ PLACES = {
             "rating": "4.2",
             "desc": "Пицца, закуски и семейный формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia проспект Победы 51А",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Pizza Mia проспект Победы 51А",
+            "photo": place_photo_path("pizza_4"),
             "is_partner": False,
         },
         {
@@ -389,8 +375,7 @@ PLACES = {
             "rating": "4.9",
             "desc": "Пицца и итальянское меню.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца Суворова 23А",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца Суворова 23А",
+            "photo": place_photo_path("pizza_5"),
             "is_partner": False,
         },
         {
@@ -401,8 +386,7 @@ PLACES = {
             "rating": "4.9",
             "desc": "Ещё одна точка Италиан Пиццы.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца проспект Победы 44",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца проспект Победы 44",
+            "photo": place_photo_path("pizza_6"),
             "is_partner": False,
         },
         {
@@ -413,8 +397,7 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Пицца и быстрый перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Pizzatime Каменская 12",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Pizzatime Каменская 12",
+            "photo": place_photo_path("pizza_7"),
             "is_partner": False,
         },
         {
@@ -425,8 +408,7 @@ PLACES = {
             "rating": "4.5",
             "desc": "Пицца, роллы и доставка.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Sushkof i Pizza",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Sushkof i Pizza",
+            "photo": place_photo_path("pizza_8"),
             "is_partner": False,
         },
         {
@@ -437,8 +419,7 @@ PLACES = {
             "rating": "4.3",
             "desc": "Пицца, горячие блюда и кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Большие тарелки",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/search/%D0%91%D0%BE%D0%BB%D1%8C%D1%88%D0%B8%D0%B5%20%D1%82%D0%B0%D1%80%D0%B5%D0%BB%D0%BA%D0%B8",
+            "photo": place_photo_path("pizza_9"),
             "is_partner": False,
         },
         {
@@ -449,8 +430,7 @@ PLACES = {
             "rating": "4.7",
             "desc": "Стритфуд, шаурма и пицца.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
-            "photo": None,
-            "photo_page": "https://nebo-7.ru/",
+            "photo": place_photo_path("pizza_10"),
             "is_partner": False,
         },
     ],
@@ -463,8 +443,7 @@ PLACES = {
             "rating": "5.0",
             "desc": "Кофе, десерты и спокойная кофейня.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Dozacoffee Алюминиевая 45",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001088171495",
+            "photo": place_photo_path("coffee_1"),
             "is_partner": False,
         },
         {
@@ -475,8 +454,7 @@ PLACES = {
             "rating": "4.5",
             "desc": "Кофе с собой и десерты.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Черный лис проспект Победы 6",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001036235498",
+            "photo": place_photo_path("coffee_2"),
             "is_partner": False,
         },
         {
@@ -487,8 +465,7 @@ PLACES = {
             "rating": "4.5",
             "desc": "Ещё одна точка кофейни Черный лис.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Черный лис Алюминиевая 68",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001090689760",
+            "photo": place_photo_path("coffee_3"),
             "is_partner": False,
         },
         {
@@ -499,8 +476,7 @@ PLACES = {
             "rating": "5.0",
             "desc": "Кофе, выпечка и перекус.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Coffee Print проспект Победы 65",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001055315793",
+            "photo": place_photo_path("coffee_4"),
             "is_partner": False,
         },
         {
@@ -511,8 +487,7 @@ PLACES = {
             "rating": "4.4",
             "desc": "Кофейня и десерты.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский По любви Алюминиевая 37",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001065981951",
+            "photo": place_photo_path("coffee_5"),
             "is_partner": False,
         },
         {
@@ -523,8 +498,7 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Кофе с собой.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Это твой кофе Суворова 24",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Это твой кофе Суворова 24",
+            "photo": place_photo_path("coffee_6"),
             "is_partner": False,
         },
         {
@@ -535,8 +509,7 @@ PLACES = {
             "rating": "4.5",
             "desc": "Напитки, десерты и кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Bubble Cafe",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001096874801",
+            "photo": place_photo_path("coffee_7"),
             "is_partner": False,
         },
         {
@@ -547,8 +520,7 @@ PLACES = {
             "rating": "4.4",
             "desc": "Кафе и кофейные напитки.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Avokado Gold",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/search/Avokado%20Gold",
+            "photo": place_photo_path("coffee_8"),
             "is_partner": False,
         },
         {
@@ -559,8 +531,7 @@ PLACES = {
             "rating": "4.4",
             "desc": "Кофе и спокойное место.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский На Берегу Набережная 9",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский На Берегу Набережная 9",
+            "photo": place_photo_path("coffee_9"),
             "is_partner": False,
         },
     ],
@@ -573,8 +544,7 @@ PLACES = {
             "rating": "4.9",
             "desc": "Бар для вечерних встреч.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Хрущёвка Каменская 12",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/gallery/firm/70000001036731602",
+            "photo": place_photo_path("bar_1"),
             "is_partner": False,
         },
         {
@@ -585,8 +555,7 @@ PLACES = {
             "rating": "4.5",
             "desc": "Бар с вечерней атмосферой.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Моджо",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/firm/70000001006952161",
+            "photo": place_photo_path("bar_2"),
             "is_partner": False,
         },
         {
@@ -597,8 +566,7 @@ PLACES = {
             "rating": "4.6",
             "desc": "Бар и место для вечернего отдыха.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский K1",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский K1",
+            "photo": place_photo_path("bar_3"),
             "is_partner": False,
         },
         {
@@ -609,8 +577,7 @@ PLACES = {
             "rating": "4.4",
             "desc": "Бар / паб-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Генрих и Генриетта",
-            "photo": None,
-            "photo_page": "https://2gis.ru/k_uralskiy/gallery/firm/70000001006952917",
+            "photo": place_photo_path("bar_4"),
             "is_partner": False,
         },
         {
@@ -621,8 +588,7 @@ PLACES = {
             "rating": "4.3",
             "desc": "Бар и вечерний отдых.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шахта",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Шахта",
+            "photo": place_photo_path("bar_5"),
             "is_partner": False,
         },
         {
@@ -633,8 +599,7 @@ PLACES = {
             "rating": "4.0",
             "desc": "Бар и клубный формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Роял Рум",
-            "photo": None,
-            "photo_page": "https://yandex.ru/maps/?text=Каменск-Уральский Роял Рум",
+            "photo": place_photo_path("bar_6"),
             "is_partner": False,
         },
         {
@@ -645,8 +610,7 @@ PLACES = {
             "rating": "Нет данных",
             "desc": "Бар / кафе-формат.",
             "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо бар",
-            "photo": None,
-            "photo_page": "https://nebo-7.ru/",
+            "photo": place_photo_path("bar_7"),
             "is_partner": False,
         },
     ],
@@ -734,27 +698,16 @@ def sort_places_by_score(places: list[dict]) -> list[dict]:
 def card_buttons(place: dict) -> InlineKeyboardMarkup:
     up, down = get_place_score(place["id"])
 
-    buttons = [
-        [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])]
-    ]
-
-    if place.get("photo_page"):
-        buttons.append(
-            [InlineKeyboardButton(text="🖼 Фото заведения", url=place["photo_page"])]
-        )
-
-    buttons.append(
-        [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")]
-    )
-
-    buttons.append(
-        [
-            InlineKeyboardButton(text=f"👍 {up}", callback_data=f"like:{place['id']}"),
-            InlineKeyboardButton(text=f"👎 {down}", callback_data=f"dislike:{place['id']}"),
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📍 Открыть в Яндекс Картах", url=place["url"])],
+            [InlineKeyboardButton(text="❤️ В избранное", callback_data=f"fav:{place['id']}")],
+            [
+                InlineKeyboardButton(text=f"👍 {up}", callback_data=f"like:{place['id']}"),
+                InlineKeyboardButton(text=f"👎 {down}", callback_data=f"dislike:{place['id']}"),
+            ],
         ]
     )
-
-    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
 def all_places_list():
@@ -792,11 +745,13 @@ def format_place(place: dict) -> str:
 
 async def send_place_card(message: Message, place: dict):
     text = format_place(place)
+    photo_path = place.get("photo")
 
-    if place.get("photo"):
+    if photo_path and os.path.exists(photo_path):
         try:
+            photo = FSInputFile(photo_path)
             await message.answer_photo(
-                photo=place["photo"],
+                photo=photo,
                 caption=text,
                 parse_mode="HTML",
                 reply_markup=card_buttons(place),
@@ -871,13 +826,13 @@ async def help_handler(message: Message):
         "Что умеет бот:\n\n"
         "• показывает заведения по категориям\n"
         "• открывает заведения в Яндекс Картах\n"
-        "• открывает страницы с фото заведений\n"
         "• показывает лучшие места\n"
         "• показывает места, где можно поесть ночью\n"
         "• выбирает случайное место\n"
         "• умеет сохранять места в избранное\n"
         "• умеет считать лайки и дизлайки\n"
-        "• умеет подбирать места по сценарию\n\n"
+        "• умеет подбирать места по сценарию\n"
+        "• показывает карточки заведений с фото\n\n"
         "Команды:\n"
         "/start — открыть меню\n"
         "/help — помощь"
