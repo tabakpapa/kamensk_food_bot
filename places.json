@@ -1,0 +1,192 @@
+{
+  "🍔 Бургеры": [
+    {
+      "id": "burger_1",
+      "name": "Бургер Кинг",
+      "address": "просп. Победы, 65",
+      "hours": "Уточняй в картах",
+      "rating": "4.6",
+      "desc": "Сетевые бургеры, комбо и напитки.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Бургер Кинг проспект Победы 65",
+      "budget": "💸 До 500",
+      "formats": ["👤 Один", "👥 Компания"],
+      "food_type": "🍔 Бургеры",
+      "distance": "🚕 Не важно",
+      "night": true,
+      "is_partner": false
+    },
+    {
+      "id": "burger_2",
+      "name": "Rostic's",
+      "address": "ул. Суворова, 24",
+      "hours": "До 00:00",
+      "rating": "4.2",
+      "desc": "Курица, бургеры, баскеты и комбо.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Rostic's Суворова 24",
+      "budget": "💸 До 500",
+      "formats": ["👤 Один", "👥 Компания"],
+      "food_type": "🍔 Бургеры",
+      "distance": "🚕 Не важно",
+      "night": true,
+      "is_partner": false
+    },
+    {
+      "id": "burger_3",
+      "name": "Шампурико",
+      "address": "Алюминиевая ул., 77Б",
+      "hours": "С 10:30",
+      "rating": "4.9",
+      "desc": "Стритфуд, мясо и блюда на гриле.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шампурико Алюминиевая 77Б",
+      "budget": "💰 До 1000",
+      "formats": ["👤 Один", "👥 Компания"],
+      "food_type": "🍔 Бургеры",
+      "distance": "🚕 Не важно",
+      "night": false,
+      "is_partner": true
+    },
+    {
+      "id": "burger_4",
+      "name": "Седьмое небо",
+      "address": "Каменская ул., 79Б",
+      "hours": "Уточняй в картах",
+      "rating": "4.7",
+      "desc": "Стритфуд, бургеры, шаурма и пицца.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
+      "budget": "💰 До 1000",
+      "formats": ["👤 Один", "💑 Свидание", "👥 Компания"],
+      "food_type": "🍔 Бургеры",
+      "distance": "🚶 Рядом",
+      "night": true,
+      "is_partner": true
+    },
+    {
+      "id": "burger_5",
+      "name": "Subjoy",
+      "address": "Адрес уточняй в картах",
+      "hours": "Уточняй в картах",
+      "rating": "4.2",
+      "desc": "Сэндвичи, бургеры и быстрый перекус.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Subjoy",
+      "budget": "💸 До 500",
+      "formats": ["👤 Один"],
+      "food_type": "🍔 Бургеры",
+      "distance": "🚶 Рядом",
+      "night": false,
+      "is_partner": false
+    },
+    {
+      "id": "burger_6",
+      "name": "Русская забава",
+      "address": "Адрес уточняй в картах",
+      "hours": "Уточняй в картах",
+      "rating": "4.4",
+      "desc": "Фастфуд и закуски.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Русская забава",
+      "budget": "💸 До 500",
+      "formats": ["👤 Один"],
+      "food_type": "🍔 Бургеры",
+      "distance": "🚕 Не важно",
+      "night": false,
+      "is_partner": false
+    }
+  ],
+  "🌯 Шаурма": [
+    {
+      "id": "shawarma_1",
+      "name": "Шаурма Маркет",
+      "address": "ул. Ленина, 13А",
+      "hours": "Уточняй в картах",
+      "rating": "4.6",
+      "desc": "Классическая шаурма и напитки.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Шаурма Маркет Ленина 13А",
+      "budget": "💸 До 500",
+      "formats": ["👤 Один", "👥 Компания"],
+      "food_type": "🌯 Шаурма",
+      "distance": "🚶 Рядом",
+      "night": false,
+      "is_partner": true
+    },
+    {
+      "id": "shawarma_8",
+      "name": "Седьмое небо",
+      "address": "Каменская ул., 79Б",
+      "hours": "Уточняй в картах",
+      "rating": "4.7",
+      "desc": "Шаурма, бургеры и пицца.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Седьмое небо Каменская 79Б",
+      "budget": "💰 До 1000",
+      "formats": ["👤 Один", "💑 Свидание", "👥 Компания"],
+      "food_type": "🌯 Шаурма",
+      "distance": "🚶 Рядом",
+      "night": true,
+      "is_partner": true
+    }
+  ],
+  "🍕 Пицца": [
+    {
+      "id": "pizza_1",
+      "name": "Додо Пицца",
+      "address": "Каменская ул., 91",
+      "hours": "Уточняй в картах",
+      "rating": "4.7",
+      "desc": "Пицца, закуски, десерты и доставка.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Додо Пицца Каменская 91",
+      "budget": "💰 До 1000",
+      "formats": ["💑 Свидание", "👥 Компания"],
+      "food_type": "🍕 Пицца",
+      "distance": "🚕 Не важно",
+      "night": false,
+      "is_partner": false
+    },
+    {
+      "id": "pizza_5",
+      "name": "Италиан Пицца",
+      "address": "ул. Суворова, 23А",
+      "hours": "С 09:00",
+      "rating": "4.9",
+      "desc": "Пицца и итальянское меню.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Италиан Пицца Суворова 23А",
+      "budget": "💰 До 1000",
+      "formats": ["💑 Свидание", "👥 Компания"],
+      "food_type": "🍕 Пицца",
+      "distance": "🚶 Рядом",
+      "night": false,
+      "is_partner": true
+    }
+  ],
+  "☕ Кофе": [
+    {
+      "id": "coffee_1",
+      "name": "Dozacoffee",
+      "address": "Алюминиевая ул., 45",
+      "hours": "До 21:00",
+      "rating": "5.0",
+      "desc": "Кофе, десерты и спокойная кофейня.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Dozacoffee Алюминиевая 45",
+      "budget": "💸 До 500",
+      "formats": ["👤 Один", "💑 Свидание"],
+      "food_type": "☕ Кофе",
+      "distance": "🚶 Рядом",
+      "night": false,
+      "is_partner": true
+    }
+  ],
+  "🍺 Бары": [
+    {
+      "id": "bar_1",
+      "name": "Хрущёвка",
+      "address": "Каменская ул., 12",
+      "hours": "Уточняй в картах",
+      "rating": "4.9",
+      "desc": "Бар для вечерних встреч.",
+      "url": "https://yandex.ru/maps/?text=Каменск-Уральский Хрущёвка Каменская 12",
+      "budget": "💰 До 1000",
+      "formats": ["👥 Компания", "💑 Свидание"],
+      "food_type": "🍺 Бары",
+      "distance": "🚕 Не важно",
+      "night": true,
+      "is_partner": true
+    }
+  ]
+}
