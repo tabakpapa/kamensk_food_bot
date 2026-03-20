@@ -1,6 +1,7 @@
 import os
 import asyncio
 import random
+import sqlite3
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart, Command
 from aiogram.types import (
@@ -26,6 +27,117 @@ dp = Dispatcher()
 FAVORITES = {}
 RATINGS = {}
 USER_VOTES = {}
+DB_PATH = "bot.db"
+
+def get_connection():
+    return sqlite3.connect(DB_PATH)
+
+def init_db():
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS favorites (
+            user_id INTEGER,
+            place_id TEXT,
+            PRIMARY KEY (user_id, place_id)
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS votes (
+            user_id INTEGER,
+            place_id TEXT,
+            vote TEXT,
+            PRIMARY KEY (user_id, place_id)
+        )
+    """)
+
+    conn.commit()
+    conn.close()
+
+def save_user(user_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("INSERT OR IGNORE INTO users (user_id) VALUES (?)", (user_id,))
+    conn.commit()
+    conn.close()
+
+def get_all_users():
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("SELECT user_id FROM users")
+    rows = cur.fetchall()
+    conn.close()
+    return [row[0] for row in rows]
+
+def add_favorite_db(user_id: int, place_id: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT OR IGNORE INTO favorites (user_id, place_id) VALUES (?, ?)",
+        (user_id, place_id)
+    )
+    conn.commit()
+    conn.close()
+
+def get_favorites_db(user_id: int):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT place_id FROM favorites WHERE user_id = ?",
+        (user_id,)
+    )
+    rows = cur.fetchall()
+    conn.close()
+    return [row[0] for row in rows]
+
+def get_vote_db(user_id: int, place_id: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute(
+        "SELECT vote FROM votes WHERE user_id = ? AND place_id = ?",
+        (user_id, place_id)
+    )
+    row = cur.fetchone()
+    conn.close()
+    return row[0] if row else None
+
+def set_vote_db(user_id: int, place_id: str, vote: str):
+    conn = get_connection()
+    cur = conn.cursor()
+    cur.execute("""
+        INSERT INTO votes (user_id, place_id, vote)
+        VALUES (?, ?, ?)
+        ON CONFLICT(user_id, place_id) DO UPDATE SET vote=excluded.vote
+    """, (user_id, place_id, vote))
+    conn.commit()
+    conn.close()
+
+def count_votes_db(place_id: str):
+    conn = get_connection()
+    cur = conn.cursor()
+
+    cur.execute(
+        "SELECT COUNT(*) FROM votes WHERE place_id = ? AND vote = 'like'",
+        (place_id,)
+    )
+    up = cur.fetchone()[0]
+
+    cur.execute(
+        "SELECT COUNT(*) FROM votes WHERE place_id = ? AND vote = 'dislike'",
+        (place_id,)
+    )
+    down = cur.fetchone()[0]
+
+    conn.close()
+    return up, down
 USERS = set()
 
 PLACES = {
@@ -510,9 +622,7 @@ def get_smart_keyboard():
 
 
 def get_place_score(place_id: str):
-    data = RATINGS.get(place_id, {"up": 0, "down": 0})
-    return data["up"], data["down"]
-
+    return count_votes_db(place_id)
 
 def get_place_rating_score(place: dict) -> int:
     data = RATINGS.get(place["id"], {"up": 0, "down": 0})
@@ -582,6 +692,7 @@ def format_place(place: dict) -> str:
 @dp.message(CommandStart())
 async def start_handler(message: Message):
     USERS.add(message.from_user.id)
+    save_user(message.from_user.id)
     await message.answer(
         "🍴 Где поесть в Каменске\n\nВыбери категорию:",
         reply_markup=get_main_keyboard()
@@ -870,9 +981,11 @@ async def random_handler(message: Message):
 @dp.message(F.text == "❤️ Моё избранное")
 async def favorites_handler(message: Message):
     user_id = message.from_user.id
-    user_favorites = FAVORITES.get(user_id, [])
+    save_user(user_id)
 
-    if not user_favorites:
+    favorite_ids = get_favorites_db(user_id)
+
+    if not favorite_ids:
         await message.answer(
             "У тебя пока нет избранных мест.",
             reply_markup=get_back_keyboard()
@@ -884,17 +997,43 @@ async def favorites_handler(message: Message):
         reply_markup=get_back_keyboard()
     )
 
-    for place in user_favorites:
-        await message.answer(
-            format_place(place),
-            parse_mode="HTML",
-            reply_markup=card_buttons(place),
-        )
+    for place_id in favorite_ids:
+        place = find_place_by_id(place_id)
+        if place:
+            await message.answer(
+                format_place(place),
+                parse_mode="HTML",
+                reply_markup=card_buttons(place),
+            )
 
+from aiogram.filters import Command
+
+ADMIN_ID = 729024995  # ← ВСТАВЬ СВОЙ ID (не @, а число!)
+
+@dp.message(Command("send"))
+async def send_broadcast(message: Message):
+    if message.from_user.id != ADMIN_ID:
+        return
+
+    text = message.text.replace("/send ", "", 1)
+
+    users = get_all_users()
+    success = 0
+
+    for user_id in users:
+        try:
+            await bot.send_message(user_id, text)
+            success += 1
+        except:
+            pass
+
+    await message.answer(f"✅ Отправлено: {success}")
 
 @dp.callback_query(F.data.startswith("fav:"))
 async def add_to_favorites_handler(callback: CallbackQuery):
     user_id = callback.from_user.id
+    save_user(user_id)
+
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
 
@@ -902,22 +1041,21 @@ async def add_to_favorites_handler(callback: CallbackQuery):
         await callback.answer("Место не найдено", show_alert=True)
         return
 
-    if user_id not in FAVORITES:
-        FAVORITES[user_id] = []
+    favorite_ids = get_favorites_db(user_id)
 
-    already_added = any(saved_place["id"] == place["id"] for saved_place in FAVORITES[user_id])
-
-    if already_added:
+    if place_id in favorite_ids:
         await callback.answer("Уже в избранном ❤️", show_alert=False)
         return
 
-    FAVORITES[user_id].append(place)
+    add_favorite_db(user_id, place_id)
     await callback.answer("Добавлено в избранное ❤️", show_alert=False)
 
 
 @dp.callback_query(F.data.startswith("like:"))
 async def like_handler(callback: CallbackQuery):
     user_id = callback.from_user.id
+    save_user(user_id)
+
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
 
@@ -925,31 +1063,25 @@ async def like_handler(callback: CallbackQuery):
         await callback.answer("Место не найдено", show_alert=True)
         return
 
-    if place_id not in RATINGS:
-        RATINGS[place_id] = {"up": 0, "down": 0}
-
-    if user_id not in USER_VOTES:
-        USER_VOTES[user_id] = {}
-
-    current_vote = USER_VOTES[user_id].get(place_id)
+    current_vote = get_vote_db(user_id, place_id)
 
     if current_vote == "like":
         await callback.answer("Ты уже поставил 👍")
         return
 
-    if current_vote == "dislike":
-        RATINGS[place_id]["down"] -= 1
+    set_vote_db(user_id, place_id, "like")
 
-    RATINGS[place_id]["up"] += 1
-    USER_VOTES[user_id][place_id] = "like"
-
-    await callback.message.edit_reply_markup(reply_markup=card_buttons(place))
+    await callback.message.edit_reply_markup(
+        reply_markup=card_buttons(place)
+    )
     await callback.answer("Ты поставил 👍")
 
 
 @dp.callback_query(F.data.startswith("dislike:"))
 async def dislike_handler(callback: CallbackQuery):
     user_id = callback.from_user.id
+    save_user(user_id)
+
     place_id = callback.data.split(":", 1)[1]
     place = find_place_by_id(place_id)
 
@@ -957,25 +1089,17 @@ async def dislike_handler(callback: CallbackQuery):
         await callback.answer("Место не найдено", show_alert=True)
         return
 
-    if place_id not in RATINGS:
-        RATINGS[place_id] = {"up": 0, "down": 0}
-
-    if user_id not in USER_VOTES:
-        USER_VOTES[user_id] = {}
-
-    current_vote = USER_VOTES[user_id].get(place_id)
+    current_vote = get_vote_db(user_id, place_id)
 
     if current_vote == "dislike":
         await callback.answer("Ты уже поставил 👎")
         return
 
-    if current_vote == "like":
-        RATINGS[place_id]["up"] -= 1
+    set_vote_db(user_id, place_id, "dislike")
 
-    RATINGS[place_id]["down"] += 1
-    USER_VOTES[user_id][place_id] = "dislike"
-
-    await callback.message.edit_reply_markup(reply_markup=card_buttons(place))
+    await callback.message.edit_reply_markup(
+        reply_markup=card_buttons(place)
+    )
     await callback.answer("Ты поставил 👎")
 
 
@@ -990,10 +1114,12 @@ async def back_handler(message: Message):
 @dp.message()
 async def fallback_handler(message: Message):
     USERS.add(message.from_user.id)
+    save_user(message.from_user.id)
     await message.answer("Нажми /start и выбери кнопку из меню.")
 
 
 async def main():
+    init_db()
     me = await bot.get_me()
     print(f"BOT STARTED: @{me.username}", flush=True)
     await bot.delete_webhook(drop_pending_updates=True)
