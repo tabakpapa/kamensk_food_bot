@@ -989,6 +989,7 @@ async def back_handler(message: Message):
 
 @dp.message()
 async def fallback_handler(message: Message):
+    USERS.add(message.from_user.id)
     await message.answer("Нажми /start и выбери кнопку из меню.")
 
 
